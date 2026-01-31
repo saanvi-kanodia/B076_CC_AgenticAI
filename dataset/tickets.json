@@ -1,0 +1,802 @@
+[
+  {
+    "ticket_id": "t_101",
+    "merchant_id": "m_005",
+    "subject": "API failing on product update",
+    "body": "My script keeps failing on the `product_image` field. Did you change the API spec? It worked fine yesterday.",
+    "priority": "High",
+    "created_at": "2023-10-27T09:45:00Z"
+  },
+  {
+    "ticket_id": "t_102",
+    "merchant_id": "m_012",
+    "subject": "Missing Orders in Backend",
+    "body": "Customers are paying, but we don't see the orders in our ERP system. It seems the webhook isn't firing?",
+    "priority": "Critical",
+    "created_at": "2023-10-27T10:11:45Z"
+  },
+  {
+    "ticket_id": "t_103",
+    "merchant_id": "m_003",
+    "subject": "CORS error on checkout page",
+    "body": "We deployed our new headless frontend to Vercel today. Now, whenever we try to add to cart, the browser console turns red with a CORS error.",
+    "priority": "High",
+    "created_at": "2023-10-27T10:15:22Z"
+  },
+  {
+    "ticket_id": "t_104",
+    "merchant_id": "m_008",
+    "subject": "Where are the API Keys?",
+    "body": "The guide says go to Settings > General, but there is no API section there. Please advise.",
+    "priority": "Low",
+    "created_at": "2023-10-27T11:20:15Z"
+  },
+  {
+    "ticket_id": "t_105",
+    "merchant_id": "m_001",
+    "subject": "500 Internal Server Error",
+    "body": "Everything is crashing. Getting 500 errors on the inventory endpoint. Is the system down?",
+    "priority": "Critical",
+    "created_at": "2023-10-27T14:23:10Z"
+  },
+  {
+    "ticket_id": "t_106",
+    "merchant_id": "m_009",
+    "subject": "API Throttling us",
+    "body": "We are only sending 50 requests a second and getting blocked with 429 errors. We need higher limits.",
+    "priority": "Medium",
+    "created_at": "2023-10-27T16:05:33Z"
+  },
+  {
+    "ticket_id": "t_107",
+    "merchant_id": "m_004",
+    "subject": "Where are my old orders?",
+    "body": "I can only see orders from the last 6 months via the API. Where is the rest of our historical data?",
+    "priority": "Medium",
+    "created_at": "2023-10-27T09:12:00Z"
+  },
+  {
+    "ticket_id": "t_108",
+    "merchant_id": "m_002",
+    "subject": "Schema validation errors",
+    "body": "We are sending the usual JSON but getting 'Validation Failed'. We haven't changed code.",
+    "priority": "High",
+    "created_at": "2023-10-27T09:50:12Z"
+  },
+  {
+    "ticket_id": "t_109",
+    "merchant_id": "m_015",
+    "subject": "Webhook callbacks missing",
+    "body": "We see the payment went through in Stripe, but no webhook hit our server. Is your queue stuck?",
+    "priority": "High",
+    "created_at": "2023-10-27T10:18:30Z"
+  },
+  {
+    "ticket_id": "t_110",
+    "merchant_id": "m_007",
+    "subject": "Access-Control-Allow-Origin missing",
+    "body": "My developer says the API is blocking our new domain. Preflight OPTIONS request is failing.",
+    "priority": "High",
+    "created_at": "2023-10-27T10:30:05Z"
+  },
+  {
+    "ticket_id": "t_111",
+    "merchant_id": "m_019",
+    "subject": "Documentation is outdated",
+    "body": "I've clicked every menu item looking for the tokens. Where did you hide the API keys? Your docs seem wrong.",
+    "priority": "Low",
+    "created_at": "2023-10-27T11:25:40Z"
+  },
+  {
+    "ticket_id": "t_112",
+    "merchant_id": "m_006",
+    "subject": "Inventory API Down",
+    "body": "Is there an outage? Everything was working 5 mins ago, now we just get 500s.",
+    "priority": "Critical",
+    "created_at": "2023-10-27T14:25:00Z"
+  },
+  {
+    "ticket_id": "t_113",
+    "merchant_id": "m_011",
+    "subject": "Rate limit seems too low",
+    "body": "Did the rate limits change in V2? We are hitting 429s constantly during our sync.",
+    "priority": "Medium",
+    "created_at": "2023-10-27T16:10:15Z"
+  },
+  {
+    "ticket_id": "t_114",
+    "merchant_id": "m_013",
+    "subject": "Migration incomplete",
+    "body": "The migration tool said 'Success' but our 2021 data is missing from the API responses.",
+    "priority": "Medium",
+    "created_at": "2023-10-27T09:15:22Z"
+  },
+  {
+    "ticket_id": "t_115",
+    "merchant_id": "m_010",
+    "subject": "400 Bad Request on products endpoint",
+    "body": "Urgent: Cannot update inventory. API says 'images' array required? We send strings like we used to.",
+    "priority": "High",
+    "created_at": "2023-10-27T09:55:00Z"
+  },
+  {
+    "ticket_id": "t_116",
+    "merchant_id": "m_018",
+    "subject": "No events received for paid orders",
+    "body": "Customers are complaining orders aren't shipping. Webhooks seem dead since the migration.",
+    "priority": "Critical",
+    "created_at": "2023-10-27T10:22:10Z"
+  },
+  {
+    "ticket_id": "t_117",
+    "merchant_id": "m_014",
+    "subject": "Browser blocking API calls",
+    "body": "The cart widget won't load. Console says 'No Access-Control-Allow-Origin header'. Help!",
+    "priority": "High",
+    "created_at": "2023-10-27T10:35:44Z"
+  },
+  {
+    "ticket_id": "t_118",
+    "merchant_id": "m_020",
+    "subject": "Cannot find Developer Settings",
+    "body": "Your docs are wrong. Page 4 screenshots don't match the new dashboard layout.",
+    "priority": "Low",
+    "created_at": "2023-10-27T11:30:00Z"
+  },
+  {
+    "ticket_id": "t_119",
+    "merchant_id": "m_016",
+    "subject": "System crashing",
+    "body": "My logs are full of 'Internal Server Error' responses from your API. Is the inventory service down?",
+    "priority": "Critical",
+    "created_at": "2023-10-27T14:28:12Z"
+  },
+  {
+    "ticket_id": "t_120",
+    "merchant_id": "m_017",
+    "subject": "Import script stopping halfway",
+    "body": "Can we increase our API quota? We are migrating data and getting blocked by 429s.",
+    "priority": "Medium",
+    "created_at": "2023-10-27T16:15:00Z"
+  },
+  {
+    "ticket_id": "t_121",
+    "merchant_id": "m_005",
+    "subject": "Missing data from 2022",
+    "body": "API returns 404 for old order IDs. Do we need a separate endpoint for archived data?",
+    "priority": "Medium",
+    "created_at": "2023-10-27T09:20:00Z"
+  },
+  {
+    "ticket_id": "t_122",
+    "merchant_id": "m_003",
+    "subject": "Product upload script broken",
+    "body": "Why am I getting a 400 error? The payload works fine on the old platform. It rejects the image field.",
+    "priority": "High",
+    "created_at": "2023-10-27T10:00:10Z"
+  },
+  {
+    "ticket_id": "t_123",
+    "merchant_id": "m_001",
+    "subject": "Order status stuck in Pending",
+    "body": "We updated our backend URL last week. Did you update the webhook destination in your system?",
+    "priority": "Critical",
+    "created_at": "2023-10-27T10:25:30Z"
+  },
+  {
+    "ticket_id": "t_124",
+    "merchant_id": "m_009",
+    "subject": "Frontend cannot fetch cart",
+    "body": "Do we need to whitelist our staging URL? getting blocked by CORS when testing locally.",
+    "priority": "High",
+    "created_at": "2023-10-27T10:40:00Z"
+  },
+  {
+    "ticket_id": "t_125",
+    "merchant_id": "m_008",
+    "subject": "UI does not match Migration Guide",
+    "body": "I need to generate a token but I can't find the button. The PDF guide seems outdated.",
+    "priority": "Low",
+    "created_at": "2023-10-27T11:35:10Z"
+  },
+  {
+    "ticket_id": "t_126",
+    "merchant_id": "m_002",
+    "subject": "Api returns generic server error",
+    "body": "Inventory sync is completely broken. Status page says everything is fine?? Getting 500s.",
+    "priority": "Critical",
+    "created_at": "2023-10-27T14:30:45Z"
+  },
+  {
+    "ticket_id": "t_127",
+    "merchant_id": "m_012",
+    "subject": "Request limit reached",
+    "body": "The headers say we have remaining requests, but we still get 429 Too Many Requests.",
+    "priority": "Medium",
+    "created_at": "2023-10-27T16:20:00Z"
+  },
+  {
+    "ticket_id": "t_128",
+    "merchant_id": "m_006",
+    "subject": "Historical orders not found via API",
+    "body": "We need access to historical records for tax auditing, but the API gives 404s for anything older than a year.",
+    "priority": "Medium",
+    "created_at": "2023-10-27T09:25:50Z"
+  },
+  {
+    "ticket_id": "t_129",
+    "merchant_id": "m_019",
+    "subject": "JSON payload rejected",
+    "body": "Is there a new required field? We are getting schema errors on all POST requests regarding images.",
+    "priority": "High",
+    "created_at": "2023-10-27T10:05:00Z"
+  },
+  {
+    "ticket_id": "t_130",
+    "merchant_id": "m_015",
+    "subject": "Webhook logs show failures",
+    "body": "I checked my access logs and I don't see any requests from your IP addresses. Are webhooks down?",
+    "priority": "High",
+    "created_at": "2023-10-27T10:28:15Z"
+  },
+  {
+    "ticket_id": "t_131",
+    "merchant_id": "m_011",
+    "subject": "Security error in console",
+    "body": "We deployed to production (store.brand.com) and now get red CORS errors. Please whitelist us.",
+    "priority": "High",
+    "created_at": "2023-10-27T10:45:20Z"
+  },
+  {
+    "ticket_id": "t_132",
+    "merchant_id": "m_004",
+    "subject": "Need API Token for setup",
+    "body": "Please send the correct path to API settings. The documentation is useless.",
+    "priority": "Low",
+    "created_at": "2023-10-27T11:40:00Z"
+  },
+  {
+    "ticket_id": "t_133",
+    "merchant_id": "m_010",
+    "subject": "Is the platform down?",
+    "body": "We are losing money. The Inventory API is returning 500s for every single request.",
+    "priority": "Critical",
+    "created_at": "2023-10-27T14:35:00Z"
+  },
+  {
+    "ticket_id": "t_134",
+    "merchant_id": "m_013",
+    "subject": "429 Too Many Requests",
+    "body": "We are running a bulk update and keeping hitting the limit. Can this be lifted?",
+    "priority": "Medium",
+    "created_at": "2023-10-27T16:25:10Z"
+  },
+  {
+    "ticket_id": "t_135",
+    "merchant_id": "m_007",
+    "subject": "Archive data access",
+    "body": "I cannot find any documentation on how to retrieve orders from 2021. The v2 API returns 404.",
+    "priority": "Medium",
+    "created_at": "2023-10-27T09:30:00Z"
+  },
+  {
+    "ticket_id": "t_136",
+    "merchant_id": "m_014",
+    "subject": "Product creation failing",
+    "body": "We keep getting a 400 error saying 'product_image' is invalid. This field is in your example docs!",
+    "priority": "High",
+    "created_at": "2023-10-27T10:08:45Z"
+  },
+  {
+    "ticket_id": "t_137",
+    "merchant_id": "m_018",
+    "subject": "Webhook not firing",
+    "body": "We changed our server address. Do we need to tell you? Webhooks stopped arriving.",
+    "priority": "High",
+    "created_at": "2023-10-27T10:32:00Z"
+  },
+  {
+    "ticket_id": "t_138",
+    "merchant_id": "m_016",
+    "subject": "Cross-Origin Request Blocked",
+    "body": "Our React app can't talk to your API. Says 'Reason: CORS header 'Access-Control-Allow-Origin' missing'.",
+    "priority": "High",
+    "created_at": "2023-10-27T10:48:30Z"
+  },
+  {
+    "ticket_id": "t_139",
+    "merchant_id": "m_020",
+    "subject": "Dev settings missing",
+    "body": "I'm on a call with my devs and we can't find the 'Generate Key' button. Guide says Settings > General.",
+    "priority": "Low",
+    "created_at": "2023-10-27T11:45:00Z"
+  },
+  {
+    "ticket_id": "t_140",
+    "merchant_id": "m_005",
+    "subject": "Inventory Service Error",
+    "body": "Getting 500 internal error on GET /inventory. Please fix immediately.",
+    "priority": "Critical",
+    "created_at": "2023-10-27T14:40:00Z"
+  },
+  {
+    "ticket_id": "t_141",
+    "merchant_id": "m_001",
+    "subject": "Limit exceeded",
+    "body": "We are getting 429s. Is the limit per minute or per second?",
+    "priority": "Medium",
+    "created_at": "2023-10-27T16:30:00Z"
+  },
+  {
+    "ticket_id": "t_142",
+    "merchant_id": "m_017",
+    "subject": "Old data missing",
+    "body": "Migration seems to have dropped our 2021 sales data. API returns 404.",
+    "priority": "Medium",
+    "created_at": "2023-10-27T09:35:00Z"
+  },
+  {
+    "ticket_id": "t_143",
+    "merchant_id": "m_012",
+    "subject": "Invalid Payload",
+    "body": "API Error: 'product_image' is not allowed. What is the new field name?",
+    "priority": "High",
+    "created_at": "2023-10-27T10:12:00Z"
+  },
+  {
+    "ticket_id": "t_144",
+    "merchant_id": "m_002",
+    "subject": "Webhooks down?",
+    "body": "We are not receiving any event notifications for the last hour.",
+    "priority": "Critical",
+    "created_at": "2023-10-27T10:35:00Z"
+  },
+  {
+    "ticket_id": "t_145",
+    "merchant_id": "m_008",
+    "subject": "CORS issue",
+    "body": "We added a new subdomain for our summer sale and it's getting blocked by CORS.",
+    "priority": "High",
+    "created_at": "2023-10-27T10:52:00Z"
+  },
+  {
+    "ticket_id": "t_146",
+    "merchant_id": "m_011",
+    "subject": "Cannot generate API key",
+    "body": "I cannot find the menu option mentioned in the docs.",
+    "priority": "Low",
+    "created_at": "2023-10-27T11:50:00Z"
+  },
+  {
+    "ticket_id": "t_147",
+    "merchant_id": "m_015",
+    "subject": "Service unavailable",
+    "body": "500 errors on all endpoints. Is this maintenance?",
+    "priority": "Critical",
+    "created_at": "2023-10-27T14:45:00Z"
+  },
+  {
+    "ticket_id": "t_148",
+    "merchant_id": "m_009",
+    "subject": "API Quota",
+    "body": "We hit the API rate limit immediately upon starting our sync.",
+    "priority": "Medium",
+    "created_at": "2023-10-27T16:35:00Z"
+  },
+  {
+    "ticket_id": "t_149",
+    "merchant_id": "m_003",
+    "subject": "Historical API",
+    "body": "Does the V2 API support retrieving orders older than 18 months? Getting 404s.",
+    "priority": "Medium",
+    "created_at": "2023-10-27T09:40:00Z"
+  },
+  {
+    "ticket_id": "t_150",
+    "merchant_id": "m_006",
+    "subject": "Schema Error",
+    "body": "Validation failed on product update. Code 400. Please help.",
+    "priority": "High",
+    "created_at": "2023-10-27T10:15:00Z"
+  },
+  {
+      "ticket_id": "t_151",
+      "merchant_id": "m_014",
+      "subject": "JSON structure error on update",
+      "body": "We are getting a 'property not allowed' error for 'product_image'. This is blocking our catalog sync.",
+      "priority": "High",
+      "created_at": "2023-10-27T10:18:00Z"
+    },
+    {
+      "ticket_id": "t_152",
+      "merchant_id": "m_007",
+      "subject": "Async events not arriving",
+      "body": "Our logistics partner isn't receiving the shipping webhooks. Is there a delay in your system?",
+      "priority": "High",
+      "created_at": "2023-10-27T10:38:15Z"
+    },
+    {
+      "ticket_id": "t_153",
+      "merchant_id": "m_019",
+      "subject": "Cross-Origin Read Blocking",
+      "body": "CORB is blocking our requests on the checkout page. We recently switched domains.",
+      "priority": "High",
+      "created_at": "2023-10-27T10:55:40Z"
+    },
+    {
+      "ticket_id": "t_154",
+      "merchant_id": "m_003",
+      "subject": "Admin panel navigation confusing",
+      "body": "I'm trying to reset my API secret. The docs say 'Settings -> General' but I only see 'Company Info' there.",
+      "priority": "Low",
+      "created_at": "2023-10-27T11:55:10Z"
+    },
+    {
+      "ticket_id": "t_155",
+      "merchant_id": "m_011",
+      "subject": "Server Faults",
+      "body": "We are seeing a spike in 5xx errors on the inventory GET endpoint. Please investigate.",
+      "priority": "Critical",
+      "created_at": "2023-10-27T14:48:22Z"
+    },
+    {
+      "ticket_id": "t_156",
+      "merchant_id": "m_008",
+      "subject": "Throttling active?",
+      "body": "We optimized our script to run faster, but now we get 429s. What is the burst limit?",
+      "priority": "Medium",
+      "created_at": "2023-10-27T16:40:00Z"
+    },
+    {
+      "ticket_id": "t_157",
+      "merchant_id": "m_002",
+      "subject": "Legacy Order Lookup",
+      "body": "Customer service cannot look up orders from 2020. The API says 'Resource Not Found'.",
+      "priority": "Medium",
+      "created_at": "2023-10-27T09:42:30Z"
+    },
+    {
+      "ticket_id": "t_158",
+      "merchant_id": "m_016",
+      "subject": "API Rejecting Image URL",
+      "body": "We send the image URL as a string. The error message is vague but mentions 'type mismatch'.",
+      "priority": "High",
+      "created_at": "2023-10-27T10:20:45Z"
+    },
+    {
+      "ticket_id": "t_159",
+      "merchant_id": "m_005",
+      "subject": "Webhook destination unreachable?",
+      "body": "I see failed webhook attempts in the dashboard. Our server is up. Can you check the logs?",
+      "priority": "Critical",
+      "created_at": "2023-10-27T10:42:00Z"
+    },
+    {
+      "ticket_id": "t_160",
+      "merchant_id": "m_013",
+      "subject": "Access Control Header",
+      "body": "Our frontend dev is complaining about missing CORS headers. We are live and losing sales.",
+      "priority": "High",
+      "created_at": "2023-10-27T11:00:00Z"
+    },
+    {
+      "ticket_id": "t_161",
+      "merchant_id": "m_001",
+      "subject": "Wrong documentation instructions",
+      "body": "Following the 'Quick Start' guide for authentication. The screenshots are completely different from the actual UI.",
+      "priority": "Low",
+      "created_at": "2023-10-27T12:05:00Z"
+    },
+    {
+      "ticket_id": "t_162",
+      "merchant_id": "m_018",
+      "subject": "Critical: Inventory API Down",
+      "body": "Our POS system is unable to sync stock levels. Returning 500 Internal Server Error.",
+      "priority": "Critical",
+      "created_at": "2023-10-27T14:52:15Z"
+    },
+    {
+      "ticket_id": "t_163",
+      "merchant_id": "m_010",
+      "subject": "Rate Limit Headers",
+      "body": "We are respecting the 'X-RateLimit-Remaining' header but still getting blocked.",
+      "priority": "Medium",
+      "created_at": "2023-10-27T16:45:10Z"
+    },
+    {
+      "ticket_id": "t_164",
+      "merchant_id": "m_004",
+      "subject": "Archived data access",
+      "body": "Is there a different base URL for archived data? We need records from before the migration.",
+      "priority": "Medium",
+      "created_at": "2023-10-27T09:48:00Z"
+    },
+    {
+      "ticket_id": "t_165",
+      "merchant_id": "m_012",
+      "subject": "Malformed JSON error",
+      "body": "The API keeps telling me my JSON is bad. It complains about the images field being a string.",
+      "priority": "High",
+      "created_at": "2023-10-27T10:25:00Z"
+    },
+    {
+      "ticket_id": "t_166",
+      "merchant_id": "m_009",
+      "subject": "Order created event missing",
+      "body": "We rely on the order webhook to trigger fulfillment. It hasn't fired all morning.",
+      "priority": "Critical",
+      "created_at": "2023-10-27T10:45:30Z"
+    },
+    {
+      "ticket_id": "t_167",
+      "merchant_id": "m_020",
+      "subject": "Preflight request failed",
+      "body": "The OPTIONS request returns 403. We updated the whitelisted origins in settings yesterday.",
+      "priority": "High",
+      "created_at": "2023-10-27T11:05:00Z"
+    },
+    {
+      "ticket_id": "t_168",
+      "merchant_id": "m_006",
+      "subject": "Cannot find API Tokens",
+      "body": "Where is the 'Developers' tab? The guide says it's under Settings but I don't see it.",
+      "priority": "Low",
+      "created_at": "2023-10-27T12:10:00Z"
+    },
+    {
+      "ticket_id": "t_169",
+      "merchant_id": "m_015",
+      "subject": "Backend errors 500",
+      "body": "Is the platform unstable? We are seeing intermittent 500 errors on product retrieval.",
+      "priority": "Critical",
+      "created_at": "2023-10-27T14:55:00Z"
+    },
+    {
+      "ticket_id": "t_170",
+      "merchant_id": "m_017",
+      "subject": "Increase API limits",
+      "body": "We need to upgrade our plan to handle more requests per second. Currently hitting 429s.",
+      "priority": "Medium",
+      "created_at": "2023-10-27T16:50:00Z"
+    },
+    {
+      "ticket_id": "t_171",
+      "merchant_id": "m_014",
+      "subject": "Old invoices missing",
+      "body": "We can't download invoices generated prior to the V2 upgrade. API returns 404.",
+      "priority": "Medium",
+      "created_at": "2023-10-27T09:52:00Z"
+    },
+    {
+      "ticket_id": "t_172",
+      "merchant_id": "m_007",
+      "subject": "Product update failure",
+      "body": "Validation error: 'product_image'. Did you deprecate this field?",
+      "priority": "High",
+      "created_at": "2023-10-27T10:28:00Z"
+    },
+    {
+      "ticket_id": "t_173",
+      "merchant_id": "m_003",
+      "subject": "Webhooks timeout",
+      "body": "Are your webhook servers overloaded? We are not getting hits.",
+      "priority": "High",
+      "created_at": "2023-10-27T10:48:00Z"
+    },
+    {
+      "ticket_id": "t_174",
+      "merchant_id": "m_011",
+      "subject": "CORS blocking localhost",
+      "body": "I'm trying to develop locally and getting CORS errors. Do I need to whitelist localhost?",
+      "priority": "Medium",
+      "created_at": "2023-10-27T11:10:00Z"
+    },
+    {
+      "ticket_id": "t_175",
+      "merchant_id": "m_002",
+      "subject": "Outdated Migration Guide",
+      "body": "The migration PDF references a 'Keys' menu that doesn't exist.",
+      "priority": "Low",
+      "created_at": "2023-10-27T12:15:00Z"
+    },
+    {
+      "ticket_id": "t_176",
+      "merchant_id": "m_019",
+      "subject": "Inventory Service Outage",
+      "body": "Production is down. 500 errors on inventory sync.",
+      "priority": "Critical",
+      "created_at": "2023-10-27T14:58:00Z"
+    },
+    {
+      "ticket_id": "t_177",
+      "merchant_id": "m_005",
+      "subject": "429 Error code",
+      "body": "Our application is crashing because of 429 Too Many Requests errors.",
+      "priority": "Medium",
+      "created_at": "2023-10-27T16:55:00Z"
+    },
+    {
+      "ticket_id": "t_178",
+      "merchant_id": "m_008",
+      "subject": "Historical data 404",
+      "body": "Why are orders from 2021 returning 'Not Found'? We need them for returns processing.",
+      "priority": "Medium",
+      "created_at": "2023-10-27T09:55:00Z"
+    },
+    {
+      "ticket_id": "t_179",
+      "merchant_id": "m_013",
+      "subject": "Schema mismatch exception",
+      "body": "We are getting a schema mismatch on the 'images' property. We are sending a string.",
+      "priority": "High",
+      "created_at": "2023-10-27T10:32:00Z"
+    },
+    {
+      "ticket_id": "t_180",
+      "merchant_id": "m_016",
+      "subject": "Events not triggering",
+      "body": "We changed our endpoints last week. Webhooks worked for a day then stopped.",
+      "priority": "High",
+      "created_at": "2023-10-27T10:52:00Z"
+    },
+    {
+      "ticket_id": "t_181",
+      "merchant_id": "m_001",
+      "subject": "Domain whitelist issue",
+      "body": "Our new domain is `shop.start.com`. We added it to the list but still get CORS errors.",
+      "priority": "High",
+      "created_at": "2023-10-27T11:15:00Z"
+    },
+    {
+      "ticket_id": "t_182",
+      "merchant_id": "m_010",
+      "subject": "Docs are incorrect",
+      "body": "I'm wasting time looking for the API key generation button based on your old docs.",
+      "priority": "Low",
+      "created_at": "2023-10-27T12:20:00Z"
+    },
+    {
+      "ticket_id": "t_183",
+      "merchant_id": "m_004",
+      "subject": "Platform instability",
+      "body": "We are getting 500s on about 50% of our requests. Is there a degraded performance status?",
+      "priority": "Critical",
+      "created_at": "2023-10-27T15:00:00Z"
+    },
+    {
+      "ticket_id": "t_184",
+      "merchant_id": "m_012",
+      "subject": "Rate Limit Exceeded",
+      "body": "Please assist with rate limiting. We are getting blocked during our nightly batch job.",
+      "priority": "Medium",
+      "created_at": "2023-10-27T17:00:00Z"
+    },
+    {
+      "ticket_id": "t_185",
+      "merchant_id": "m_018",
+      "subject": "Missing legacy records",
+      "body": "Accessing order #8821 (from 2022) returns a 404 error.",
+      "priority": "Medium",
+      "created_at": "2023-10-27T09:58:00Z"
+    },
+    {
+      "ticket_id": "t_186",
+      "merchant_id": "m_006",
+      "subject": "Property validation failed",
+      "body": "Error: `product_image` is not a valid property in schema V2.",
+      "priority": "High",
+      "created_at": "2023-10-27T10:35:00Z"
+    },
+    {
+      "ticket_id": "t_187",
+      "merchant_id": "m_020",
+      "subject": "Webhook failure logs",
+      "body": "We are not receiving any POST requests from your webhook service.",
+      "priority": "Critical",
+      "created_at": "2023-10-27T10:55:00Z"
+    },
+    {
+      "ticket_id": "t_188",
+      "merchant_id": "m_009",
+      "subject": "CORS headers missing",
+      "body": "Blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.",
+      "priority": "High",
+      "created_at": "2023-10-27T11:20:00Z"
+    },
+    {
+      "ticket_id": "t_189",
+      "merchant_id": "m_015",
+      "subject": "Help finding API keys",
+      "body": "I cannot find the 'General' tab under Settings. Did it move?",
+      "priority": "Low",
+      "created_at": "2023-10-27T12:25:00Z"
+    },
+    {
+      "ticket_id": "t_190",
+      "merchant_id": "m_002",
+      "subject": "Internal Server Error 500",
+      "body": "Inventory endpoint is down. 500 Internal Server Error.",
+      "priority": "Critical",
+      "created_at": "2023-10-27T15:05:00Z"
+    },
+    {
+      "ticket_id": "t_191",
+      "merchant_id": "m_017",
+      "subject": "Throttle limit",
+      "body": "We are getting 429s. Can we whitelist our IP for higher limits?",
+      "priority": "Medium",
+      "created_at": "2023-10-27T17:05:00Z"
+    },
+    {
+      "ticket_id": "t_192",
+      "merchant_id": "m_011",
+      "subject": "Archive lookup failed",
+      "body": "We are migrating analytics and need data from 2021. API gives 404s.",
+      "priority": "Medium",
+      "created_at": "2023-10-27T10:00:00Z"
+    },
+    {
+      "ticket_id": "t_193",
+      "merchant_id": "m_005",
+      "subject": "API structure change?",
+      "body": "Our integrations are failing with 400 errors. We suspect a schema change regarding images.",
+      "priority": "High",
+      "created_at": "2023-10-27T10:40:00Z"
+    },
+    {
+      "ticket_id": "t_194",
+      "merchant_id": "m_014",
+      "subject": "No webhooks received",
+      "body": "We placed a test order but no webhook was triggered. Please check.",
+      "priority": "Critical",
+      "created_at": "2023-10-27T11:00:00Z"
+    },
+    {
+      "ticket_id": "t_195",
+      "merchant_id": "m_008",
+      "subject": "Cross Origin Error",
+      "body": "We are seeing red errors in the console related to CORS. Please help.",
+      "priority": "High",
+      "created_at": "2023-10-27T11:25:00Z"
+    },
+    {
+      "ticket_id": "t_196",
+      "merchant_id": "m_003",
+      "subject": "Documentation feedback",
+      "body": "The path to API keys in your docs is incorrect. It leads to a dead end.",
+      "priority": "Low",
+      "created_at": "2023-10-27T12:30:00Z"
+    },
+    {
+      "ticket_id": "t_197",
+      "merchant_id": "m_019",
+      "subject": "API outage",
+      "body": "Is the API down? 500 errors everywhere.",
+      "priority": "Critical",
+      "created_at": "2023-10-27T15:10:00Z"
+    },
+    {
+      "ticket_id": "t_198",
+      "merchant_id": "m_001",
+      "subject": "Request quota exceeded",
+      "body": "We are getting 429 Too Many Requests. We need to sync our catalog ASAP.",
+      "priority": "Medium",
+      "created_at": "2023-10-27T17:10:00Z"
+    },
+    {
+      "ticket_id": "t_199",
+      "merchant_id": "m_013",
+      "subject": "Historical orders missing",
+      "body": "I can't see orders from last year in the V2 API. 404 Not Found.",
+      "priority": "Medium",
+      "created_at": "2023-10-27T10:05:00Z"
+    },
+    {
+      "ticket_id": "t_200",
+      "merchant_id": "m_007",
+      "subject": "JSON validation error",
+      "body": "API returns 400 Bad Request. 'product_image' not allowed.",
+      "priority": "High",
+      "created_at": "2023-10-27T10:45:00Z"
+    }
+]

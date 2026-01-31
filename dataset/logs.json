@@ -1,0 +1,502 @@
+[
+  {
+    "log_id": "log_301",
+    "timestamp": "2023-10-27T09:44:55Z",
+    "merchant_id": "m_005",
+    "level": "ERROR",
+    "status_code": 400,
+    "endpoint": "POST /api/v2/products",
+    "message": "Schema Validation Failed: Additional properties not allowed: product_image",
+    "payload_snippet": "{ \"title\": \"Running Shoes\", \"product_image\": \"https://cdn.shop.com/shoe.jpg\" }"
+  },
+  {
+    "log_id": "log_302",
+    "timestamp": "2023-10-27T09:50:10Z",
+    "merchant_id": "m_002",
+    "level": "ERROR",
+    "status_code": 400,
+    "endpoint": "POST /api/v2/products",
+    "message": "Schema Validation Failed: Additional properties not allowed: product_image",
+    "payload_snippet": "{ \"sku\": \"SKU-999\", \"product_image\": \"...\" }"
+  },
+  {
+    "log_id": "log_303",
+    "timestamp": "2023-10-27T10:11:40Z",
+    "merchant_id": "m_012",
+    "level": "ERROR",
+    "status_code": 504,
+    "endpoint": "WEBHOOK_OUTBOUND: order.created",
+    "message": "Gateway Timeout: Destination server took > 5000ms to respond",
+    "payload_snippet": "Target: https://legacy-erp.m012.com/hooks"
+  },
+  {
+    "log_id": "log_304",
+    "timestamp": "2023-10-27T10:15:20Z",
+    "merchant_id": "m_003",
+    "level": "WARN",
+    "status_code": 403,
+    "endpoint": "OPTIONS /api/v2/cart",
+    "message": "CORS Policy Failure: Origin 'https://new-store-vercel.app' not in whitelist",
+    "payload_snippet": "Origin: https://new-store-vercel.app"
+  },
+  {
+    "log_id": "log_305",
+    "timestamp": "2023-10-27T14:23:05Z",
+    "merchant_id": "m_001",
+    "level": "ERROR",
+    "status_code": 500,
+    "endpoint": "GET /api/v2/inventory",
+    "message": "Database Connection Pool Exhausted",
+    "payload_snippet": "null"
+  },
+  {
+    "log_id": "log_306",
+    "timestamp": "2023-10-27T14:23:06Z",
+    "merchant_id": "m_006",
+    "level": "ERROR",
+    "status_code": 500,
+    "endpoint": "GET /api/v2/inventory",
+    "message": "Database Connection Pool Exhausted",
+    "payload_snippet": "null"
+  },
+  {
+    "log_id": "log_307",
+    "timestamp": "2023-10-27T14:23:08Z",
+    "merchant_id": "m_019",
+    "level": "ERROR",
+    "status_code": 500,
+    "endpoint": "GET /api/v2/inventory",
+    "message": "Database Connection Pool Exhausted",
+    "payload_snippet": "null"
+  },
+  {
+    "log_id": "log_308",
+    "timestamp": "2023-10-27T14:23:10Z",
+    "merchant_id": "m_015",
+    "level": "ERROR",
+    "status_code": 500,
+    "endpoint": "GET /api/v2/inventory",
+    "message": "Database Connection Pool Exhausted",
+    "payload_snippet": "null"
+  },
+  {
+    "log_id": "log_309",
+    "timestamp": "2023-10-27T16:05:30Z",
+    "merchant_id": "m_009",
+    "level": "WARN",
+    "status_code": 429,
+    "endpoint": "POST /api/v2/products/batch",
+    "message": "Rate Limit Exceeded: Bucket capacity 50/sec",
+    "payload_snippet": "Retry-After: 45"
+  },
+  {
+    "log_id": "log_310",
+    "timestamp": "2023-10-27T09:11:55Z",
+    "merchant_id": "m_004",
+    "level": "WARN",
+    "status_code": 404,
+    "endpoint": "GET /api/v2/orders/ord_2021_555",
+    "message": "Resource Not Found: Order ID likely archived",
+    "payload_snippet": "params: { id: ord_2021_555 }"
+  },
+  {
+    "log_id": "log_311",
+    "timestamp": "2023-10-27T10:18:25Z",
+    "merchant_id": "m_015",
+    "level": "ERROR",
+    "status_code": 404,
+    "endpoint": "WEBHOOK_OUTBOUND: payment.success",
+    "message": "Not Found: Destination endpoint returned 404",
+    "payload_snippet": "Target: https://api.m015-fashion.com/v1/webhook"
+  },
+  {
+    "log_id": "log_312",
+    "timestamp": "2023-10-27T10:29:55Z",
+    "merchant_id": "m_007",
+    "level": "WARN",
+    "status_code": 403,
+    "endpoint": "OPTIONS /api/v2/checkout",
+    "message": "CORS Policy Failure: Origin 'https://staging.m007.com' not in whitelist",
+    "payload_snippet": "Origin: https://staging.m007.com"
+  },
+  {
+    "log_id": "log_313",
+    "timestamp": "2023-10-27T16:10:10Z",
+    "merchant_id": "m_011",
+    "level": "WARN",
+    "status_code": 429,
+    "endpoint": "GET /api/v2/products",
+    "message": "Rate Limit Exceeded",
+    "payload_snippet": "Retry-After: 120"
+  },
+  {
+    "log_id": "log_314",
+    "timestamp": "2023-10-27T09:54:55Z",
+    "merchant_id": "m_010",
+    "level": "ERROR",
+    "status_code": 400,
+    "endpoint": "POST /api/v2/products",
+    "message": "Schema Validation Failed: Expected array for 'images', got string",
+    "payload_snippet": "{ \"images\": \"http://img.com/1.jpg\" }"
+  },
+  {
+    "log_id": "log_315",
+    "timestamp": "2023-10-27T10:22:05Z",
+    "merchant_id": "m_018",
+    "level": "ERROR",
+    "status_code": 500,
+    "endpoint": "WEBHOOK_OUTBOUND: order.created",
+    "message": "Internal Server Error from Merchant Server",
+    "payload_snippet": "Target: https://m018-shop.com/hooks returned 500"
+  },
+  {
+    "log_id": "log_316",
+    "timestamp": "2023-10-27T10:35:40Z",
+    "merchant_id": "m_014",
+    "level": "WARN",
+    "status_code": 403,
+    "endpoint": "OPTIONS /api/v2/cart",
+    "message": "CORS Policy Failure",
+    "payload_snippet": "Origin: https://shop.m014.com"
+  },
+  {
+    "log_id": "log_317",
+    "timestamp": "2023-10-27T14:28:05Z",
+    "merchant_id": "m_016",
+    "level": "ERROR",
+    "status_code": 500,
+    "endpoint": "GET /api/v2/inventory",
+    "message": "Database Connection Pool Exhausted",
+    "payload_snippet": "null"
+  },
+  {
+    "log_id": "log_318",
+    "timestamp": "2023-10-27T16:14:55Z",
+    "merchant_id": "m_017",
+    "level": "WARN",
+    "status_code": 429,
+    "endpoint": "POST /api/v2/customers/import",
+    "message": "Rate Limit Exceeded: Bulk import throttling active",
+    "payload_snippet": "Retry-After: 300"
+  },
+  {
+    "log_id": "log_319",
+    "timestamp": "2023-10-27T09:19:55Z",
+    "merchant_id": "m_005",
+    "level": "WARN",
+    "status_code": 404,
+    "endpoint": "GET /api/v2/orders/ord_2022_ABC",
+    "message": "Resource Not Found",
+    "payload_snippet": "params: { id: ord_2022_ABC }"
+  },
+  {
+    "log_id": "log_320",
+    "timestamp": "2023-10-27T10:00:05Z",
+    "merchant_id": "m_003",
+    "level": "ERROR",
+    "status_code": 400,
+    "endpoint": "PUT /api/v2/products/123",
+    "message": "Schema Validation Failed",
+    "payload_snippet": "{ \"product_image\": \"...\" }"
+  },
+  {
+    "log_id": "log_321",
+    "timestamp": "2023-10-27T10:25:25Z",
+    "merchant_id": "m_001",
+    "level": "ERROR",
+    "status_code": 404,
+    "endpoint": "WEBHOOK_OUTBOUND: order.created",
+    "message": "Not Found: Merchant endpoint does not exist",
+    "payload_snippet": "Target: https://legacy-shoes.com/webhooks/v2"
+  },
+  {
+    "log_id": "log_322",
+    "timestamp": "2023-10-27T10:39:55Z",
+    "merchant_id": "m_009",
+    "level": "WARN",
+    "status_code": 403,
+    "endpoint": "OPTIONS /api/v2/cart",
+    "message": "CORS Policy Failure",
+    "payload_snippet": "Origin: http://localhost:3000"
+  },
+  {
+    "log_id": "log_323",
+    "timestamp": "2023-10-27T14:30:40Z",
+    "merchant_id": "m_002",
+    "level": "ERROR",
+    "status_code": 500,
+    "endpoint": "GET /api/v2/inventory",
+    "message": "Database Connection Pool Exhausted",
+    "payload_snippet": "null"
+  },
+  {
+    "log_id": "log_324",
+    "timestamp": "2023-10-27T16:19:55Z",
+    "merchant_id": "m_012",
+    "level": "WARN",
+    "status_code": 429,
+    "endpoint": "GET /api/v2/products",
+    "message": "Rate Limit Exceeded",
+    "payload_snippet": "Retry-After: 60"
+  },
+  {
+    "log_id": "log_325",
+    "timestamp": "2023-10-27T09:25:45Z",
+    "merchant_id": "m_006",
+    "level": "WARN",
+    "status_code": 404,
+    "endpoint": "GET /api/v2/invoices/inv_2020_001",
+    "message": "Resource Not Found: Invoice older than retention period",
+    "payload_snippet": "params: { id: inv_2020_001 }"
+  },
+  {
+    "log_id": "log_326",
+    "timestamp": "2023-10-27T10:04:55Z",
+    "merchant_id": "m_019",
+    "level": "ERROR",
+    "status_code": 400,
+    "endpoint": "POST /api/v2/products",
+    "message": "Schema Validation Failed: 'images' must be an array",
+    "payload_snippet": "{ \"images\": \"string_value\" }"
+  },
+  {
+    "log_id": "log_327",
+    "timestamp": "2023-10-27T10:28:10Z",
+    "merchant_id": "m_015",
+    "level": "ERROR",
+    "status_code": 502,
+    "endpoint": "WEBHOOK_OUTBOUND: inventory.low",
+    "message": "Bad Gateway: Merchant server disconnected",
+    "payload_snippet": "Target: https://api.m015-fashion.com/v1/webhook"
+  },
+  {
+    "log_id": "log_328",
+    "timestamp": "2023-10-27T10:45:15Z",
+    "merchant_id": "m_011",
+    "level": "WARN",
+    "status_code": 403,
+    "endpoint": "OPTIONS /api/v2/checkout",
+    "message": "CORS Policy Failure",
+    "payload_snippet": "Origin: https://store.brand.com"
+  },
+  {
+    "log_id": "log_329",
+    "timestamp": "2023-10-27T14:34:55Z",
+    "merchant_id": "m_010",
+    "level": "ERROR",
+    "status_code": 500,
+    "endpoint": "GET /api/v2/inventory",
+    "message": "Database Connection Pool Exhausted",
+    "payload_snippet": "null"
+  },
+  {
+    "log_id": "log_330",
+    "timestamp": "2023-10-27T14:34:56Z",
+    "merchant_id": "m_013",
+    "level": "ERROR",
+    "status_code": 500,
+    "endpoint": "GET /api/v2/inventory",
+    "message": "Database Connection Pool Exhausted",
+    "payload_snippet": "null"
+  },
+  {
+    "log_id": "log_331",
+    "timestamp": "2023-10-27T14:34:57Z",
+    "merchant_id": "m_004",
+    "level": "ERROR",
+    "status_code": 500,
+    "endpoint": "GET /api/v2/inventory",
+    "message": "Database Connection Pool Exhausted",
+    "payload_snippet": "null"
+  },
+  {
+    "log_id": "log_332",
+    "timestamp": "2023-10-27T14:34:58Z",
+    "merchant_id": "m_020",
+    "level": "ERROR",
+    "status_code": 500,
+    "endpoint": "GET /api/v2/inventory",
+    "message": "Database Connection Pool Exhausted",
+    "payload_snippet": "null"
+  },
+  {
+    "log_id": "log_333",
+    "timestamp": "2023-10-27T16:25:05Z",
+    "merchant_id": "m_013",
+    "level": "WARN",
+    "status_code": 429,
+    "endpoint": "POST /api/v2/catalog/sync",
+    "message": "Rate Limit Exceeded",
+    "payload_snippet": "Retry-After: 10"
+  },
+  {
+    "log_id": "log_334",
+    "timestamp": "2023-10-27T09:29:55Z",
+    "merchant_id": "m_007",
+    "level": "WARN",
+    "status_code": 404,
+    "endpoint": "GET /api/v2/orders/ord_2021_888",
+    "message": "Resource Not Found",
+    "payload_snippet": "params: { id: ord_2021_888 }"
+  },
+  {
+    "log_id": "log_335",
+    "timestamp": "2023-10-27T10:08:40Z",
+    "merchant_id": "m_014",
+    "level": "ERROR",
+    "status_code": 400,
+    "endpoint": "POST /api/v2/products",
+    "message": "Schema Validation Failed: Additional properties not allowed: product_image",
+    "payload_snippet": "{ \"product_image\": \"...\" }"
+  },
+  {
+    "log_id": "log_336",
+    "timestamp": "2023-10-27T10:31:55Z",
+    "merchant_id": "m_018",
+    "level": "ERROR",
+    "status_code": 404,
+    "endpoint": "WEBHOOK_OUTBOUND: order.created",
+    "message": "Not Found",
+    "payload_snippet": "Target: https://m018-shop.com/hooks"
+  },
+  {
+    "log_id": "log_337",
+    "timestamp": "2023-10-27T10:48:25Z",
+    "merchant_id": "m_016",
+    "level": "WARN",
+    "status_code": 403,
+    "endpoint": "OPTIONS /api/v2/cart",
+    "message": "CORS Policy Failure",
+    "payload_snippet": "Origin: https://react-app.m016.com"
+  },
+  {
+    "log_id": "log_338",
+    "timestamp": "2023-10-27T14:39:55Z",
+    "merchant_id": "m_005",
+    "level": "ERROR",
+    "status_code": 500,
+    "endpoint": "GET /api/v2/inventory",
+    "message": "Database Connection Pool Exhausted",
+    "payload_snippet": "null"
+  },
+  {
+    "log_id": "log_339",
+    "timestamp": "2023-10-27T16:29:55Z",
+    "merchant_id": "m_001",
+    "level": "WARN",
+    "status_code": 429,
+    "endpoint": "GET /api/v2/products",
+    "message": "Rate Limit Exceeded",
+    "payload_snippet": "Retry-After: 60"
+  },
+  {
+    "log_id": "log_340",
+    "timestamp": "2023-10-27T09:34:55Z",
+    "merchant_id": "m_017",
+    "level": "WARN",
+    "status_code": 404,
+    "endpoint": "GET /api/v2/analytics/2021",
+    "message": "Resource Not Found",
+    "payload_snippet": "path: /analytics/2021"
+  },
+  {
+    "log_id": "log_341",
+    "timestamp": "2023-10-27T10:11:55Z",
+    "merchant_id": "m_012",
+    "level": "ERROR",
+    "status_code": 400,
+    "endpoint": "POST /api/v2/products",
+    "message": "Schema Validation Failed: product_image is deprecated",
+    "payload_snippet": "{ \"product_image\": \"...\" }"
+  },
+  {
+    "log_id": "log_342",
+    "timestamp": "2023-10-27T10:34:55Z",
+    "merchant_id": "m_002",
+    "level": "ERROR",
+    "status_code": 503,
+    "endpoint": "WEBHOOK_OUTBOUND: order.created",
+    "message": "Service Unavailable: Merchant server overloaded",
+    "payload_snippet": "Target: https://api.fastfashion.com/hooks/v1"
+  },
+  {
+    "log_id": "log_343",
+    "timestamp": "2023-10-27T10:51:55Z",
+    "merchant_id": "m_008",
+    "level": "WARN",
+    "status_code": 403,
+    "endpoint": "OPTIONS /api/v2/checkout",
+    "message": "CORS Policy Failure: Origin 'https://summer-sale.m008.com' not in whitelist",
+    "payload_snippet": "Origin: https://summer-sale.m008.com"
+  },
+  {
+    "log_id": "log_344",
+    "timestamp": "2023-10-27T14:44:55Z",
+    "merchant_id": "m_015",
+    "level": "ERROR",
+    "status_code": 500,
+    "endpoint": "GET /api/v2/inventory",
+    "message": "Database Connection Pool Exhausted",
+    "payload_snippet": "null"
+  },
+  {
+    "log_id": "log_345",
+    "timestamp": "2023-10-27T16:34:55Z",
+    "merchant_id": "m_009",
+    "level": "WARN",
+    "status_code": 429,
+    "endpoint": "POST /api/v2/products",
+    "message": "Rate Limit Exceeded",
+    "payload_snippet": "Retry-After: 45"
+  },
+  {
+    "log_id": "log_346",
+    "timestamp": "2023-10-27T09:39:55Z",
+    "merchant_id": "m_003",
+    "level": "WARN",
+    "status_code": 404,
+    "endpoint": "GET /api/v2/orders/ord_2019_xxx",
+    "message": "Resource Not Found: Data archived",
+    "payload_snippet": "params: { id: ord_2019_xxx }"
+  },
+  {
+    "log_id": "log_347",
+    "timestamp": "2023-10-27T10:14:55Z",
+    "merchant_id": "m_006",
+    "level": "ERROR",
+    "status_code": 400,
+    "endpoint": "POST /api/v2/products",
+    "message": "Schema Validation Failed",
+    "payload_snippet": "{ \"product_image\": \"...\" }"
+  },
+  {
+    "log_id": "log_348",
+    "timestamp": "2023-10-27T10:38:10Z",
+    "merchant_id": "m_007",
+    "level": "ERROR",
+    "status_code": 408,
+    "endpoint": "WEBHOOK_OUTBOUND: shipping.request",
+    "message": "Request Timeout",
+    "payload_snippet": "Target: https://logistics.m007.com"
+  },
+  {
+    "log_id": "log_349",
+    "timestamp": "2023-10-27T11:04:55Z",
+    "merchant_id": "m_020",
+    "level": "WARN",
+    "status_code": 403,
+    "endpoint": "OPTIONS /api/v2/cart",
+    "message": "CORS Policy Failure",
+    "payload_snippet": "Origin: https://m020-new.com"
+  },
+  {
+    "log_id": "log_350",
+    "timestamp": "2023-10-27T17:04:55Z",
+    "merchant_id": "m_017",
+    "level": "WARN",
+    "status_code": 429,
+    "endpoint": "GET /api/v2/products",
+    "message": "Rate Limit Exceeded",
+    "payload_snippet": "Retry-After: 60"
+  }
+]
