@@ -102,3 +102,67 @@ def check_platform_health():
     if error_counts > 20:
         return "CRITICAL: Potential Platform Outage detected (High volume of 500s)."
     return "Platform Status: Healthy. All systems operational."
+
+# --- PR AGENT TOOLS ---
+
+@tool
+def validate_pr_code(files_changed: list[dict]):
+    """
+    Validates PR code for common issues.
+    Returns list of issues found.
+    """
+    print(f"   🛠️ TOOL: Validating PR code ({len(files_changed)} files)...")
+    issues = []
+    
+    for file_info in files_changed:
+        filename = file_info.get('filename', '')
+        if filename.endswith('.py'):
+            # Python-specific checks
+            if file_info.get('additions', 0) > 500:
+                issues.append(f"{filename}: Large file change ({file_info['additions']} lines)")
+            if file_info.get('deletions', 0) > file_info.get('additions', 1):
+                issues.append(f"{filename}: More deletions than additions (potential breaking change)")
+    
+    return issues if issues else "No major issues found"
+
+@tool
+def check_merge_conflicts(base_branch: str, target_branch: str, files_list: list[str]):
+    """
+    Checks for potential merge conflicts between branches.
+    """
+    print(f"   🛠️ TOOL: Checking merge conflicts between {base_branch} and {target_branch}...")
+    # In production, this would query git history
+    conflicts = []
+    
+    # Simple heuristic: frequently changed files are more likely to conflict
+    frequently_changed = ['requirements.txt', 'package.json', 'pom.xml', '.gitignore']
+    for file in files_list:
+        if any(freq in file for freq in frequently_changed):
+            conflicts.append(f"High conflict risk in {file}")
+    
+    return conflicts if conflicts else "No likely merge conflicts detected"
+
+@tool
+def get_pr_context(pr_title: str, pr_description: str):
+    """
+    Extracts key context from PR title and description.
+    Returns categorized information.
+    """
+    print(f"   🛠️ TOOL: Extracting PR context...")
+    
+    context = {
+        "type": "feature",
+        "category": "general",
+        "has_breaking_changes": "BREAKING" in pr_title.upper() or "BREAKING" in pr_description.upper(),
+        "has_security_changes": "security" in pr_title.lower() or "security" in pr_description.lower(),
+        "has_tests": "test" in pr_title.lower() or "test" in pr_description.lower()
+    }
+    
+    if "fix" in pr_title.lower():
+        context["type"] = "bugfix"
+    elif "feat" in pr_title.lower() or "feature" in pr_title.lower():
+        context["type"] = "feature"
+    elif "refactor" in pr_title.lower():
+        context["type"] = "refactor"
+    
+    return context

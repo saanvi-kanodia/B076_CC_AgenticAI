@@ -4,7 +4,8 @@ from langchain_groq import ChatGroq
 from langgraph.graph import StateGraph, END
 from langchain_core.prompts import ChatPromptTemplate
 from agent_tools import fetch_merchant_logs, search_documentation, check_platform_health
-from typing import TypedDict, List
+from pr_agent import process_pr_task, PRAnalysisRequest
+from typing import TypedDict, List, Optional
 
 # Load environment variables from .env file
 load_dotenv()
@@ -24,11 +25,18 @@ class AgentState(TypedDict):
     incident_id: str
     symptom_description: str
     affected_merchants: List[str]
+    task_type: str  # 'incident', 'pr', etc.
+    
+    # PR-specific inputs
+    pr_request: Optional[dict] = None
     
     # Internal Memory (The Clipboard)
     logs_data: str              # Evidence found by Investigator
     docs_data: str              # Knowledge found by Researcher
     root_cause_analysis: str    # Thoughts from Orchestrator
+    
+    # PR Agent output
+    pr_analysis_result: Optional[dict] = None
     
     # Outputs
     proposed_action: str        # What we want to do
@@ -67,24 +75,47 @@ def node_researcher(state: AgentState):
 
 def node_analyst(state: AgentState):
     """The Brain: Synthesizes Logs + Docs into a Diagnosis"""
-    print("🧠 ANALYST: Reasoning about root cause...")
-    
+    print("🧠 ANALYST: Reasoning about root cause (structured)...")
+
+    # Include platform health check to avoid assuming platform outage
+    try:
+        platform_status = check_platform_health.invoke({})
+    except Exception:
+        platform_status = "Platform status unknown"
+
     prompt = f"""
-    You are a Senior DevOps Engineer. 
-    
-    1. SYMPTOMS: {state.get('symptom_description', '')}
-    2. EVIDENCE (LOGS): {state.get('logs_data', '')}
-    3. GROUND TRUTH (DOCS): {state.get('docs_data', '')}
-    
-    Task: Determine the root cause.
-    - Is it a User Error? (e.g., using old schema, wrong API key)
-    - Is it a Platform Bug? (e.g., 500 errors, database down)
-    - Is it a Documentation Gap?
-    
-    Output ONLY the diagnosis and a brief explanation.
-    """
+You are a Senior DevOps Engineer. Use the provided evidence to evaluate THREE hypotheses:
+  A) User Error (e.g., wrong schema, bad API key, misconfiguration)
+  B) Platform Bug (e.g., DB down, connection pool exhausted, deployment regression)
+  C) Documentation Gap (e.g., breaking change not documented)
+
+For each hypothesis, give a probability (0-100%) that it explains the incident and list 1-3 concrete evidence items (cite lines from logs or docs). Then choose a PRIMARY diagnosis (one of A/B/C) and a brief action recommendation.
+
+INPUTS:
+SYMPTOMS: {state.get('symptom_description', '')}
+EVIDENCE (LOGS): {state.get('logs_data', '')}
+GROUND TRUTH (DOCS): {state.get('docs_data', '')}
+PLATFORM_STATUS: {platform_status}
+
+IMPORTANT: Do not default to 'Platform Bug' unless the evidence shows system-wide failures (e.g., many distinct merchants with 5xx, health check returns CRITICAL, or DB connection errors). Prefer the simplest explanation supported by logs/docs.
+
+OUTPUT FORMAT (JSON ONLY):
+{{
+  "probabilities": {{"user_error": int, "platform_bug": int, "docs_gap": int}},
+  "evidence": ["evidence item 1", "evidence item 2"],
+  "diagnosis": "user_error" | "platform_bug" | "docs_gap",
+  "explanation": "one-sentence justification",
+  "recommended_action": "short action (reply/escalate/request more info)"
+}}
+
+Keep answers concise and factual.
+"""
+
     response = llm.invoke(prompt)
-    return {"root_cause_analysis": response.content}
+
+    # Try to use structured JSON if available, otherwise fall back to raw text
+    root_cause = response.content
+    return {"root_cause_analysis": root_cause}
 
 def node_responder(state: AgentState):
     """The Writer: Drafts the action"""
@@ -102,6 +133,51 @@ def node_responder(state: AgentState):
     response = llm.invoke(prompt)
     return {"draft_response": response.content}
 
+def node_pr_agent(state: AgentState):
+    """Specialized Agent: Handles Pull Request analysis tasks"""
+    print("🔀 PR_AGENT: Processing PR request...")
+    
+    if not state.get('pr_request'):
+        return {"pr_analysis_result": {"status": "error", "error": "No PR request provided"}}
+    
+    try:
+        # Convert dict to PRAnalysisRequest if needed
+        pr_data = state['pr_request']
+        if isinstance(pr_data, dict):
+            pr_request = PRAnalysisRequest(
+                task_type=pr_data.get('task_type', 'analyze'),
+                pr_title=pr_data.get('pr_title', ''),
+                pr_description=pr_data.get('pr_description', ''),
+                pr_files_changed=pr_data.get('pr_files_changed', []),
+                pr_author=pr_data.get('pr_author', ''),
+                base_branch=pr_data.get('base_branch', 'main'),
+                target_branch=pr_data.get('target_branch', 'develop'),
+                additional_context=pr_data.get('additional_context')
+            )
+        else:
+            pr_request = pr_data
+        
+        # Process the PR task
+        task_id = state.get('incident_id', 'PR_TASK_AUTO')
+        result = process_pr_task(task_id, pr_request)
+        
+        return {"pr_analysis_result": result}
+    except Exception as e:
+        print(f"❌ PR_AGENT Error: {str(e)}")
+        return {"pr_analysis_result": {"status": "error", "error": str(e)}}
+
+def router_by_task_type(state: AgentState) -> str:
+    """
+    Routes to appropriate agent based on task type.
+    Returns node name to execute next.
+    """
+    task_type = state.get('task_type', 'incident').lower()
+    
+    if task_type == 'pr':
+        return "pr_agent"
+    else:
+        return "investigator"
+
 # --- GRAPH CONSTRUCTION ---
 
 workflow = StateGraph(AgentState)
@@ -111,14 +187,34 @@ workflow.add_node("investigator", node_investigator)
 workflow.add_node("researcher", node_researcher)
 workflow.add_node("analyst", node_analyst)
 workflow.add_node("responder", node_responder)
+workflow.add_node("pr_agent", node_pr_agent)
+
+# Define Entry Point (Router)
+# Start -> Route to appropriate agent based on task type
+workflow.set_entry_point("router")
+
+# Add conditional routing
+def router_node(state):
+    task_type = state.get('task_type', 'incident').lower()
+    if task_type == 'pr':
+        return "pr_agent"
+    else:
+        return "investigator"
+
+workflow.add_node("router", lambda state: {"_routing_done": True})
 
 # Define Edges (The Flow)
-# Start -> Investigator -> Researcher -> Analyst -> Responder -> End
-workflow.set_entry_point("investigator")
+# For incident handling path
 workflow.add_edge("investigator", "researcher")
 workflow.add_edge("researcher", "analyst")
 workflow.add_edge("analyst", "responder")
 workflow.add_edge("responder", END)
+
+# For PR handling path
+workflow.add_edge("pr_agent", END)
+
+# Router should be able to send to the appropriate starting node
+workflow.add_conditional_edges("router", router_by_task_type, path_map=["investigator", "pr_agent"])
 
 # Compile
 app = workflow.compile()
@@ -129,13 +225,37 @@ def run_agent_on_incident(incident_data):
         "incident_id": incident_data['incident_id'],
         "symptom_description": incident_data['summary'],
         "affected_merchants": incident_data['affected_merchants'],
+        "task_type": "incident",
+        "pr_request": None,
         "logs_data": "",
         "docs_data": "",
         "root_cause_analysis": "",
         "draft_response": "",
         "proposed_action": "",
         "confidence_score": 0.0,
-        "messages": []
+        "messages": [],
+        "pr_analysis_result": None
+    }
+    
+    result = app.invoke(initial_state)
+    return result
+
+def run_agent_on_pr(pr_data):
+    """Process a Pull Request through the PR agent"""
+    initial_state = {
+        "incident_id": pr_data.get('task_id', 'PR_TASK_AUTO'),
+        "symptom_description": "",
+        "affected_merchants": [],
+        "task_type": "pr",
+        "pr_request": pr_data,
+        "logs_data": "",
+        "docs_data": "",
+        "root_cause_analysis": "",
+        "draft_response": "",
+        "proposed_action": "",
+        "confidence_score": 0.0,
+        "messages": [],
+        "pr_analysis_result": None
     }
     
     result = app.invoke(initial_state)
