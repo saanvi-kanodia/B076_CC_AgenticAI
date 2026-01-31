@@ -1,0 +1,13 @@
+gentic AI for Self-Healing Support During Headless E-commerce Migration
+
+POV
+
+Hi, I'm Naitik, a customer support manager at a large e-commerce SaaS company that is currently migrating merchants from a fully hosted platform to a headless architecture. On paper, the migration unlocks flexibility and performance but in reality, it has triggered a massive surge in support tickets. Merchants are facing broken checkouts, misconfigured APIs, missing webhooks, frontend–backend mismatches, and behavior that "used to work" but no longer does. Support tickets are flooding in faster than teams can respond, and it's often unclear whether an issue is caused by merchant setup, platform bugs, documentation gaps, or the migration itself. By the time patterns are recognized, dozens of merchants are already affected.
+
+Problem Statement
+
+Design an agentic AI system that acts as a self-healing support layer for a SaaS platform undergoing a hosted-to-headless migration. The agent's role is not just to answer tickets, but to observe signals across the system, reason about root causes, and coordinate action across support, product, and engineering before issues escalate. At a minimum, your system should demonstrate a clear agent loop: ● Observe: Ingest signals such as incoming support tickets, repeated merchant errors, failed checkouts, API/webhook failures, migration stage data, or abnormal behavior patterns ● Reason: Identify whether issues stem from migration missteps, platform regressions, documentation gaps, or merchant configuration errors ● Decide: Determine appropriate actions support guidance, proactive merchant communication, escalation to engineering, temporary mitigations, or documentation updates ● Act (with boundaries): Execute or recommend actions with clear confidence levels, risk assessment, and human approval where required Crucially, the agent must be explainable and controllable. You are required to design an interface that allows humans to understand what the agent believes is happening, why it believes so, what actions it proposes, and what impact those actions might have. The system should clearly show uncertainty, assumptions, and ethical limits especially when money, live checkouts, or merchant trust are involved.
+
+Expected Outcome
+
+Participants are expected to build a working, code-based implementation of the proposed agentic AI system. Submissions must include a publicly accessible Git repository containing the agent logic, orchestration, and integrations used to observe signals, reason about issues, and take or recommend actions. This should go beyond a single LLM call teams must demonstrate proper agent behavior, including state, decision-making, tool usage, and feedback loops.

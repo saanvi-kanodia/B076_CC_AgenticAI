@@ -1,0 +1,246 @@
+[
+  {
+    "incident_id": "INC-0",
+    "status": "DETECTED",
+    "ticket_count": 15,
+    "priority_level": "High",
+    "affected_merchants": [
+      "m_005",
+      "m_002",
+      "m_010",
+      "m_003",
+      "m_019",
+      "m_014",
+      "m_012",
+      "m_006",
+      "m_016",
+      "m_007",
+      "m_013"
+    ],
+    "summary": "Cluster of 15 tickets related to: API failing on product update",
+    "example_ticket_text": "Subject: API failing on product update\nBody: My script keeps failing on the `product_image` field. Did you change the API spec? It worked fine yesterday.",
+    "ticket_ids": [
+      "t_101",
+      "t_108",
+      "t_115",
+      "t_122",
+      "t_129",
+      "t_136",
+      "t_143",
+      "t_150",
+      "t_151",
+      "t_158",
+      "t_165",
+      "t_172",
+      "t_179",
+      "t_186",
+      "t_200"
+    ]
+  },
+  {
+    "incident_id": "INC-3",
+    "status": "DETECTED",
+    "ticket_count": 14,
+    "priority_level": "Critical",
+    "affected_merchants": [
+      "m_001",
+      "m_006",
+      "m_016",
+      "m_002",
+      "m_010",
+      "m_005",
+      "m_015",
+      "m_011",
+      "m_018",
+      "m_019",
+      "m_004"
+    ],
+    "summary": "Cluster of 14 tickets related to: 500 Internal Server Error",
+    "example_ticket_text": "Subject: 500 Internal Server Error\nBody: Everything is crashing. Getting 500 errors on the inventory endpoint. Is the system down?",
+    "ticket_ids": [
+      "t_105",
+      "t_112",
+      "t_119",
+      "t_126",
+      "t_133",
+      "t_140",
+      "t_147",
+      "t_155",
+      "t_162",
+      "t_169",
+      "t_176",
+      "t_183",
+      "t_190",
+      "t_197"
+    ]
+  },
+  {
+    "incident_id": "INC-1",
+    "status": "DETECTED",
+    "ticket_count": 13,
+    "priority_level": "Critical",
+    "affected_merchants": [
+      "m_012",
+      "m_018",
+      "m_001",
+      "m_015",
+      "m_002",
+      "m_007",
+      "m_005",
+      "m_009",
+      "m_003",
+      "m_016",
+      "m_020",
+      "m_014"
+    ],
+    "summary": "Cluster of 13 tickets related to: Missing Orders in Backend",
+    "example_ticket_text": "Subject: Missing Orders in Backend\nBody: Customers are paying, but we don't see the orders in our ERP system. It seems the webhook isn't firing?",
+    "ticket_ids": [
+      "t_102",
+      "t_116",
+      "t_123",
+      "t_130",
+      "t_137",
+      "t_144",
+      "t_152",
+      "t_159",
+      "t_166",
+      "t_173",
+      "t_180",
+      "t_187",
+      "t_194"
+    ]
+  },
+  {
+    "incident_id": "INC-6",
+    "status": "DETECTED",
+    "ticket_count": 10,
+    "priority_level": "High",
+    "affected_merchants": [
+      "m_007",
+      "m_011",
+      "m_016",
+      "m_008",
+      "m_019",
+      "m_013",
+      "m_020",
+      "m_001",
+      "m_009"
+    ],
+    "summary": "Cluster of 10 tickets related to: Access-Control-Allow-Origin missing",
+    "example_ticket_text": "Subject: Access-Control-Allow-Origin missing\nBody: My developer says the API is blocking our new domain. Preflight OPTIONS request is failing.",
+    "ticket_ids": [
+      "t_110",
+      "t_131",
+      "t_138",
+      "t_145",
+      "t_153",
+      "t_160",
+      "t_167",
+      "t_181",
+      "t_188",
+      "t_195"
+    ]
+  },
+  {
+    "incident_id": "INC-5",
+    "status": "DETECTED",
+    "ticket_count": 9,
+    "priority_level": "Medium",
+    "affected_merchants": [
+      "m_004",
+      "m_005",
+      "m_006",
+      "m_007",
+      "m_003",
+      "m_002",
+      "m_008",
+      "m_018",
+      "m_013"
+    ],
+    "summary": "Cluster of 9 tickets related to: Where are my old orders?",
+    "example_ticket_text": "Subject: Where are my old orders?\nBody: I can only see orders from the last 6 months via the API. Where is the rest of our historical data?",
+    "ticket_ids": [
+      "t_107",
+      "t_121",
+      "t_128",
+      "t_135",
+      "t_149",
+      "t_157",
+      "t_178",
+      "t_185",
+      "t_199"
+    ]
+  },
+  {
+    "incident_id": "INC-2",
+    "status": "DETECTED",
+    "ticket_count": 8,
+    "priority_level": "Low",
+    "affected_merchants": [
+      "m_008",
+      "m_019",
+      "m_004",
+      "m_011",
+      "m_006",
+      "m_010",
+      "m_015",
+      "m_003"
+    ],
+    "summary": "Cluster of 8 tickets related to: Where are the API Keys?",
+    "example_ticket_text": "Subject: Where are the API Keys?\nBody: The guide says go to Settings > General, but there is no API section there. Please advise.",
+    "ticket_ids": [
+      "t_104",
+      "t_111",
+      "t_132",
+      "t_146",
+      "t_168",
+      "t_182",
+      "t_189",
+      "t_196"
+    ]
+  },
+  {
+    "incident_id": "INC-4",
+    "status": "DETECTED",
+    "ticket_count": 7,
+    "priority_level": "Medium",
+    "affected_merchants": [
+      "m_009",
+      "m_012",
+      "m_013",
+      "m_017",
+      "m_005",
+      "m_001"
+    ],
+    "summary": "Cluster of 7 tickets related to: API Throttling us",
+    "example_ticket_text": "Subject: API Throttling us\nBody: We are only sending 50 requests a second and getting blocked with 429 errors. We need higher limits.",
+    "ticket_ids": [
+      "t_106",
+      "t_127",
+      "t_134",
+      "t_148",
+      "t_170",
+      "t_177",
+      "t_198"
+    ]
+  },
+  {
+    "incident_id": "INC-7",
+    "status": "DETECTED",
+    "ticket_count": 3,
+    "priority_level": "Medium",
+    "affected_merchants": [
+      "m_013",
+      "m_017",
+      "m_011"
+    ],
+    "summary": "Cluster of 3 tickets related to: Migration incomplete",
+    "example_ticket_text": "Subject: Migration incomplete\nBody: The migration tool said 'Success' but our 2021 data is missing from the API responses.",
+    "ticket_ids": [
+      "t_114",
+      "t_142",
+      "t_192"
+    ]
+  }
+]
