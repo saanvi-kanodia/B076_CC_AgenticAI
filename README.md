@@ -111,7 +111,6 @@ Access the Streamlit dashboard for real-time monitoring and manual oversight.
 - **Response Confidence**: 70-85% average confidence scores
 - **Category Distribution**: 51% user error, 31% platform issues, 18% documentation gaps
 
-
 ## Contributing
 
 1. Ensure all tests pass: `python -m pytest`
