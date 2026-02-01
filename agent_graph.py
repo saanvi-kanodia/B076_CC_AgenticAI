@@ -2,7 +2,6 @@ import os
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from langgraph.graph import StateGraph, END
-from langchain_core.prompts import ChatPromptTemplate
 from agent_tools import fetch_merchant_logs, search_documentation, check_platform_health, create_documentation_pr
 from pr_agent import process_pr_task, PRAnalysisRequest
 from typing import TypedDict, List, Optional

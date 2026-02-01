@@ -1,7 +1,6 @@
 import streamlit as st
 import json
 from dotenv import load_dotenv
-from agent_tools import check_platform_health
 from email_service import send_incident_response
 
 # Load environment variables
