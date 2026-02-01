@@ -1,6 +1,7 @@
 import streamlit as st
 import json
 from agent_tools import check_platform_health
+from email_service import send_incident_response
 
 
 # Page config
@@ -489,9 +490,21 @@ elif mode == "Agent Investigation":
                             st.markdown(formatted_response)
                             st.markdown('</div>', unsafe_allow_html=True)
                         
-                        # Show timestamp
+                        # Send email to merchants
+                        email_result = send_incident_response(
+                            incident_data=selected_incident,
+                            response_content=message_content,
+                            is_edited=False
+                        )
+                        
+                        # Show timestamp and email status
                         import datetime
                         st.caption(f"Sent at: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+                        
+                        if email_result.get('demo_mode'):
+                            st.info(f"📧 Demo Mode: {email_result.get('message')} | Recipients: {', '.join(email_result.get('recipients', []))}")
+                        elif email_result.get('success'):
+                            st.success(f"📧 Email notifications sent to {len(email_result.get('recipients', []))} merchant(s)")
                         
                 elif confidence >= 0.6:  # Medium confidence - require approval
                     st.markdown("#### ⚠️ Response Requires Approval")
@@ -517,7 +530,20 @@ elif mode == "Agent Investigation":
                         col1, col2, col3 = st.columns([1, 1, 2])
                         with col1:
                             if st.button("Approve & Send", key="approve_send_btn", type="primary"):
+                                # Send email to merchants
+                                email_result = send_incident_response(
+                                    incident_data=selected_incident,
+                                    response_content=message_content,
+                                    is_edited=False
+                                )
+                                
                                 st.success("Response approved and sent to merchants!")
+                                
+                                if email_result.get('demo_mode'):
+                                    st.info(f"📧 Demo Mode: {email_result.get('message')}")
+                                elif email_result.get('success'):
+                                    st.success(f"📧 Email sent to {len(email_result.get('recipients', []))} merchant(s)")
+                                
                                 st.balloons()
                         with col2:
                             if st.button("Reject", key="reject_btn"):
@@ -532,9 +558,22 @@ elif mode == "Agent Investigation":
                         col1, col2 = st.columns([1, 1])
                         with col1:
                             if st.button("Send", key="send_edit_btn", type="primary"):
+                                # Send edited email to merchants
+                                email_result = send_incident_response(
+                                    incident_data=selected_incident,
+                                    response_content=edited,
+                                    is_edited=True
+                                )
+                                
                                 st.session_state['edit_mode'] = False
                                 st.session_state['edited_response'] = edited
                                 st.success("Edited response sent to merchants!")
+                                
+                                if email_result.get('demo_mode'):
+                                    st.info(f"📧 Demo Mode: {email_result.get('message')}")
+                                elif email_result.get('success'):
+                                    st.success(f"📧 Email sent to {len(email_result.get('recipients', []))} merchant(s)")
+                                
                                 st.balloons()
                                 st.rerun()
                         with col2:
