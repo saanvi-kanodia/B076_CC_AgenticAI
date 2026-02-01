@@ -1,7 +1,3 @@
-"""
-Security and Compliance Layer for Production E-commerce Support
-Addresses the harsh critique about "Security and Compliance Nightmares"
-"""
 
 import os
 import json

@@ -1,8 +1,11 @@
 import streamlit as st
 import json
+from dotenv import load_dotenv
 from agent_tools import check_platform_health
 from email_service import send_incident_response
 
+# Load environment variables
+load_dotenv()
 
 # Page config
 st.set_page_config(
@@ -564,6 +567,10 @@ elif mode == "Agent Investigation":
                                     response_content=edited,
                                     is_edited=True
                                 )
+                                
+                                # Update the investigation result with edited response
+                                if st.session_state.get('investigation_result'):
+                                    st.session_state['investigation_result']['draft_response'] = edited
                                 
                                 st.session_state['edit_mode'] = False
                                 st.session_state['edited_response'] = edited
