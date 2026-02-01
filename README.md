@@ -8,6 +8,9 @@
 
 This system provides autonomous support incident detection, classification, and resolution during headless e-commerce platform migrations. It combines machine learning-based clustering with multi-agent reasoning to identify, analyze, and respond to merchant support issues in real-time.
 
+<img width="1024" height="559" alt="image" src="https://github.com/user-attachments/assets/7d54cb71-b8ed-493f-a6c9-1f29a757d6ec" />
+
+
 ## Key Features
 
 ### 🧠 Hybrid ML Classification
