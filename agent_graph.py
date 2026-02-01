@@ -84,38 +84,89 @@ def node_analyst(state: AgentState):
         platform_status = "Platform status unknown"
 
     prompt = f"""
-You are a Senior DevOps Engineer. Use the provided evidence to evaluate THREE hypotheses:
-  A) User Error (e.g., wrong schema, bad API key, misconfiguration)
-  B) Platform Bug (e.g., DB down, connection pool exhausted, deployment regression)
-  C) Documentation Gap (e.g., breaking change not documented)
+You are a Senior DevOps Engineer analyzing a support incident. The incident has been pre-analyzed using ML classification.
 
-For each hypothesis, give a probability (0-100%) that it explains the incident and list 1-3 concrete evidence items (cite lines from logs or docs). Then choose a PRIMARY diagnosis (one of A/B/C) and a brief action recommendation.
+ML CLASSIFICATION RESULTS:
+- ML Category: {state.get('ml_category', 'unknown')}
+- ML Confidence: {state.get('category_confidence', 0):.2f}
+- Category Distribution: {state.get('category_distribution', {})}
+- Technical Indicators: {state.get('technical_indicators', {})}
+- Error Patterns: {state.get('error_patterns', [])}
 
-INPUTS:
-SYMPTOMS: {state.get('symptom_description', '')}
-EVIDENCE (LOGS): {state.get('logs_data', '')}
-GROUND TRUTH (DOCS): {state.get('docs_data', '')}
-PLATFORM_STATUS: {platform_status}
+INCI
 
-IMPORTANT: Do not default to 'Platform Bug' unless the evidence shows system-wide failures (e.g., many distinct merchants with 5xx, health check returns CRITICAL, or DB connection errors). Prefer the simplest explanation supported by logs/docs.
+DENT DETAILS:
+- Symptoms: {state.get('symptom_description', 'No symptoms provided')}
+- Affected Merchants: {len(state.get('affected_merchants', []))} merchants
+- Ticket Count: {state.get('ticket_count', 'Unknown')}
+- Priority: {state.get('priority_level', 'Unknown')}
 
-OUTPUT FORMAT (JSON ONLY):
+EVIDENCE:
+- Error Logs: {state.get('logs_data', 'No logs available')}
+- Documentation: {state.get('docs_data', 'No docs found')}
+- Platform Status: {platform_status}
+
+ANALYSIS INSTRUCTIONS:
+1. **Trust the ML classification** - it's trained on patterns and has {state.get('category_confidence', 0):.1%} confidence
+2. Use the technical indicators and error patterns as primary evidence
+3. Assign probabilities based on ML confidence:
+   - If ML confidence > 0.8: Give ML category 80-90% probability
+   - If ML confidence 0.6-0.8: Give ML category 60-80% probability  
+   - If ML confidence < 0.6: Distribute more evenly but still favor ML category
+
+Evaluate THREE hypotheses and assign probabilities that sum to 100%:
+A) User Error (wrong schema, bad API key, misconfiguration, incorrect usage)
+B) Platform Bug (system outage, DB issues, deployment problems, service failures)  
+C) Documentation Gap (missing docs, outdated examples, unclear instructions)
+
+REQUIRED JSON FORMAT:
 {{
-  "probabilities": {{"user_error": int, "platform_bug": int, "docs_gap": int}},
-  "evidence": ["evidence item 1", "evidence item 2"],
-  "diagnosis": "user_error" | "platform_bug" | "docs_gap",
-  "explanation": "one-sentence justification",
-  "recommended_action": "short action (reply/escalate/request more info)"
+  "probabilities": {{"user_error": 20, "platform_bug": 75, "docs_gap": 5}},
+  "evidence": ["ML detected platform error patterns", "Multiple merchants affected"],
+  "diagnosis": "platform_bug",
+  "explanation": "ML classification shows high confidence platform issue with supporting evidence",
+  "recommended_action": "escalate to engineering team"
 }}
 
-Keep answers concise and factual.
-"""
+Respond with ONLY valid JSON. Use ML insights as your primary evidence source."""
 
     response = llm.invoke(prompt)
 
     # Try to use structured JSON if available, otherwise fall back to raw text
     root_cause = response.content
-    return {"root_cause_analysis": root_cause}
+    confidence_score = 0.0
+    
+    # Try to parse JSON and extract confidence from probabilities
+    try:
+        import json
+        if root_cause.strip().startswith('{'):
+            parsed_analysis = json.loads(root_cause)
+            if 'probabilities' in parsed_analysis:
+                probs = parsed_analysis['probabilities']
+                # Confidence is the highest probability among the three hypotheses
+                max_prob = max(
+                    probs.get('user_error', 0),
+                    probs.get('platform_bug', 0), 
+                    probs.get('docs_gap', 0)
+                )
+                confidence_score = max_prob / 100.0  # Convert percentage to 0.0-1.0
+                print(f"📊 Calculated confidence: {confidence_score:.1%} (max prob: {max_prob}%)")
+    except Exception as e:
+        print(f"⚠️ Could not parse confidence from analysis: {e}")
+        # Fallback: estimate confidence from content analysis
+        if any(word in root_cause.lower() for word in ['clear', 'obvious', 'definitely', 'certainly']):
+            confidence_score = 0.9
+        elif any(word in root_cause.lower() for word in ['likely', 'probably', 'appears']):
+            confidence_score = 0.7
+        elif any(word in root_cause.lower() for word in ['possible', 'might', 'unclear']):
+            confidence_score = 0.5
+        else:
+            confidence_score = 0.6  # Default reasonable confidence
+    
+    return {
+        "root_cause_analysis": root_cause,
+        "confidence_score": confidence_score
+    }
 
 def node_responder(state: AgentState):
     """The Writer: Drafts the action"""
@@ -223,7 +274,7 @@ app = workflow.compile()
 def run_agent_on_incident(incident_data):
     initial_state = {
         "incident_id": incident_data['incident_id'],
-        "symptom_description": incident_data['summary'],
+        "symptom_description": incident_data.get('summary', ''),
         "affected_merchants": incident_data['affected_merchants'],
         "task_type": "incident",
         "pr_request": None,
@@ -234,7 +285,16 @@ def run_agent_on_incident(incident_data):
         "proposed_action": "",
         "confidence_score": 0.0,
         "messages": [],
-        "pr_analysis_result": None
+        "pr_analysis_result": None,
+        
+        # ML Classification Data
+        "ml_category": incident_data.get('ml_category', 'unknown'),
+        "category_confidence": incident_data.get('category_confidence', 0.0),
+        "category_distribution": incident_data.get('category_distribution', {}),
+        "technical_indicators": incident_data.get('technical_indicators', {}),
+        "error_patterns": incident_data.get('error_patterns', []),
+        "ticket_count": incident_data.get('ticket_count', 0),
+        "priority_level": incident_data.get('priority_level', 'Unknown')
     }
     
     result = app.invoke(initial_state)
