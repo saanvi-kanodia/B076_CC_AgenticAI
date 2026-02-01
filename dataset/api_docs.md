@@ -358,17 +358,6 @@ async function apiCallWithRetry(url, options, maxRetries = 3) {
 
 ## 7. Error Codes & Troubleshooting
 
-### HTTP Status Codes
-
-| Code | Meaning               | Typical Cause                           | Solution                                  |
-| ---- | --------------------- | --------------------------------------- | ----------------------------------------- |
-| 400  | Bad Request           | Invalid JSON, schema validation failure | Check request format and required fields  |
-| 401  | Unauthorized          | Missing/invalid API token               | Generate new token in dashboard           |
-| 403  | Forbidden             | CORS issue, insufficient permissions    | Check CORS whitelist, token permissions   |
-| 404  | Not Found             | Resource doesn't exist                  | Verify IDs, check if resource was deleted |
-| 422  | Unprocessable Entity  | Business logic error (duplicate SKU)    | Check business rules, fix data conflicts  |
-| 429  | Too Many Requests     | Rate limit exceeded                     | Implement retry with exponential backoff  |
-| 500  | Internal Server Error | Platform issue                          | Report to support, implement retry logic  |
 
 ### Platform Outage Indicators
 

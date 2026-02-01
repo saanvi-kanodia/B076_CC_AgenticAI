@@ -38,6 +38,59 @@ st.markdown("""
     padding: 20px;
     margin-bottom: 18px;
 }
+.message-container {
+    background: #1e1e1e;
+    color: #ffffff;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 15px 0;
+    border-left: 4px solid #007bff;
+    white-space: pre-wrap;
+    font-family: 'Source Code Pro', monospace;
+    line-height: 1.6;
+}
+.response-header {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: #495057;
+}
+.response-section {
+    margin-bottom: 15px;
+}
+.api-block {
+    background: #2d3748;
+    color: #e2e8f0;
+    padding: 12px;
+    border-radius: 6px;
+    font-family: 'Source Code Pro', monospace;
+    margin: 8px 0;
+}
+.investigation-result {
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 10px 0;
+}
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+}
+.status-critical {
+    background: #dc3545;
+    color: white;
+}
+.status-high {
+    background: #fd7e14;
+    color: white;
+}
+.status-medium {
+    background: #ffc107;
+    color: black;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -46,59 +99,163 @@ st.markdown('<div class="header">Agentic AI for Self-Healing Migration Support</
 st.markdown('<div class="subheader">Advanced System: ML Clustering → Multi-Agent Investigation → Autonomous Resolution</div>', unsafe_allow_html=True)
 st.markdown("<br>", unsafe_allow_html=True)
 
+# Documentation Viewer Modal
+if 'show_docs' not in st.session_state:
+    st.session_state['show_docs'] = False
+
+if st.session_state['show_docs']:
+    st.markdown("---")
+    col1, col2 = st.columns([6, 1])
+    with col1:
+        st.markdown("### 📚 API Documentation Viewer")
+    with col2:
+        if st.button("✖ Close", key="close_docs"):
+            st.session_state['show_docs'] = False
+            st.rerun()
+    
+    try:
+        with open('dataset/api_docs.md', 'r') as f:
+            docs_content = f.read()
+        
+        # Display the documentation
+        st.markdown(docs_content)
+        
+    except FileNotFoundError:
+        st.error("Documentation file not found at dataset/api_docs.md")
+    
+    st.markdown("---")
+    if st.button("✖ Close Documentation", key="close_docs_bottom"):
+        st.session_state['show_docs'] = False
+        st.rerun()
+
 # Sidebar
 with st.sidebar:
-    st.markdown('<div class="subheader">Control Center</div>', unsafe_allow_html=True)
-    mode = st.radio(
-        "Select Operation",
+    st.header("🎛️ Control Center")
+
+    # Documentation Viewer Button
+    if st.button("📚 Open Documentation Viewer", use_container_width=True):
+        st.session_state['show_docs'] = True
+
+    # Mode selection
+    mode = st.selectbox(
+        "System Operation Mode",
         ["Incident Detection (ML)", "Agent Investigation", "Full Pipeline"],
-        index=2
+        index=0
     )
+
     st.divider()
-    st.markdown('<div class="subheader">Platform Health</div>', unsafe_allow_html=True)
-    health = check_platform_health.invoke({})
+
+    # Quick stats if incidents exist
+    try:
+        with open('dataset/active_incidents.json', 'r') as f:
+            incidents_data = json.load(f)
+
+        # Get total tickets from original dataset
+        try:
+            with open('dataset/tickets.json', 'r') as f:
+                all_tickets = json.load(f)
+            total_tickets_db = len(all_tickets)
+        except:
+            total_tickets_db = sum(inc.get('ticket_count', 0) for inc in incidents_data)
+
+        st.subheader("📊 System Status")
+        st.metric("Active Incidents", len(incidents_data))
+
+        if incidents_data:
+            critical_count = sum(1 for inc in incidents_data if inc.get('priority_level') == 'Critical')
+            st.metric("Critical Issues", critical_count)
+
+            st.metric("Total Tickets", total_tickets_db)
+    except:
+        st.info("Run detection to see system stats")
 
 
     # Main panel logic
 if mode == "Incident Detection (ML)":
-    st.markdown('### ML-Powered Ticket Clustering')
-    st.markdown("Detects and clusters incidents from support tickets using the latest model.")
-    if st.button("Run Clustering", type="primary", use_container_width=True):
-        from agent_tools import run_ticket_clustering
-        with st.spinner("Running clustering model..."):
-            incidents = run_ticket_clustering.invoke({})
-        if not incidents:
-            st.warning("No incidents detected.")
-        else:
-            st.success(f"Detected {len(incidents)} incidents.")
-            for inc in incidents:
-                with st.expander(f"📋 {inc.get('incident_id','N/A')} - {inc.get('summary','No summary')[:80]}...", expanded=True):
-                    col1, col2, col3 = st.columns(3)
+    st.markdown('### 🔍 ML-Powered Incident Detection')
+    st.markdown("**Using DBSCAN clustering + Business rule classification** to group similar support tickets into actionable incidents.")
+    
+    col1, col2 = st.columns([3, 1])
+    
+    with col1:
+        st.markdown("#### How It Works:")
+        st.markdown("""
+        1. **Feature Engineering**: Extract patterns, error codes, merchant frequencies
+        2. **Ground Truth Labels**: Apply business rules for platform bugs, user errors, docs gaps  
+        3. **ML Classification**: Train hybrid classifier for confidence scoring
+        4. **Semantic Clustering**: Group similar tickets using sentence embeddings
+        5. **Incident Generation**: Create actionable incidents with priority levels
+        """)
+    
+    with col2:
+        if st.button("🚀 Run Detection", type="primary", use_container_width=True):
+            from agent_tools import run_ticket_clustering
+            
+            with st.spinner("Running ML incident detection..."):
+                incidents = run_ticket_clustering.invoke({})
+            
+            if not incidents:
+                st.warning("⚠️ No incidents detected. Check ticket data.")
+            else:
+                st.success(f"✅ Detected {len(incidents)} incidents from ticket analysis")
+                st.rerun()
+    
+    # Display existing incidents
+    try:
+        with open('dataset/active_incidents.json', 'r') as f:
+            incidents = json.load(f)
+        
+        if incidents:
+            st.divider()
+            st.markdown(f"### 🚨 Active Incidents ({len(incidents)})")
+            
+            for inc in incidents[:8]:  # Show top 8 incidents
+                # Create status badge
+                priority = inc.get('priority_level', 'Medium')
+                status_class = f"status-{priority.lower()}" if priority in ['Critical', 'High', 'Medium'] else "status-medium"
+                
+                with st.expander(
+                    f"**{inc.get('incident_id', 'N/A')}** | {inc.get('ticket_count', 0)} tickets | {inc.get('ml_category', 'unknown').replace('_', ' ').title()}",
+                    expanded=False
+                ):
+                    # Metrics row
+                    col1, col2, col3, col4 = st.columns(4)
                     with col1:
-                        st.metric("Ticket Count", inc.get('ticket_count', 0))
+                        st.metric("Tickets", inc.get('ticket_count', 0))
                     with col2:
-                        st.metric("Priority", inc.get('priority_level', 'N/A').upper())
-                    with col3:
                         st.metric("Merchants", len(inc.get('affected_merchants', [])))
+                    with col3:
+                        st.metric("Priority", priority)
+                    with col4:
+                        st.metric("Confidence", f"{inc.get('category_confidence', 0.8):.1%}")
                     
-                    st.markdown("**Summary:**")
-                    st.write(inc.get('summary', 'No summary available'))
+                    # Summary and details
+                    st.markdown(f"**Summary:** {inc.get('summary', 'No summary available')}")
                     
-                    if inc.get('affected_merchants'):
-                        st.markdown("**Affected Merchants:**")
-                        st.code(', '.join(inc.get('affected_merchants', [])))
+                    if inc.get('error_patterns'):
+                        st.markdown(f"**Error Patterns:** {', '.join(inc.get('error_patterns', [])[:3])}")
                     
+                    # Sample ticket
                     if inc.get('sample_tickets'):
-                        st.markdown("**Sample Tickets:**")
-                        for i, ticket in enumerate(inc.get('sample_tickets', [])[:3]):
-                            st.markdown(f"*Ticket {i+1}:* {ticket}")
-                    
-                    with st.expander("🔍 Raw Data", expanded=False):
-                        st.json(inc)
+                        sample = inc['sample_tickets'][0]
+                        st.markdown("**Example Ticket:**")
+                        st.info(f"**{sample.get('subject', 'No subject')}**\n\n{sample.get('body', 'No body')[:150]}...")
+        
+    except FileNotFoundError:
+        st.info("💡 Click 'Run Detection' to analyze tickets and detect incidents.")
 
 elif mode == "Agent Investigation":
     st.markdown('### Multi-Agent Investigation System')
     st.markdown("Architecture: Orchestrator → Investigator → Researcher → Analyst → Responder")
+    
+    # Initialize session state for investigation results
+    if 'investigation_result' not in st.session_state:
+        st.session_state['investigation_result'] = None
+    if 'edit_mode' not in st.session_state:
+        st.session_state['edit_mode'] = False
+    if 'edited_response' not in st.session_state:
+        st.session_state['edited_response'] = ''
+    
     try:
         with open('dataset/active_incidents.json', 'r') as f:
             incidents = json.load(f)
@@ -114,6 +271,12 @@ elif mode == "Agent Investigation":
             from agent_graph import run_agent_on_incident
             with st.spinner("Running agent investigation..."):
                 result = run_agent_on_incident(selected_incident)
+                st.session_state['investigation_result'] = result
+                st.session_state['edit_mode'] = False  # Reset edit mode on new investigation
+        
+        # Display results if they exist
+        result = st.session_state.get('investigation_result')
+        if result:
             st.markdown('### 🔬 Investigation Results')
             
             # Key metrics
@@ -187,8 +350,22 @@ elif mode == "Agent Investigation":
                         # Split by section separators for better formatting
                         sections = docs_content.split('---')
                         for i, section in enumerate(sections):
-                            if section.strip():
-                                st.markdown(section.strip())
+                            section = section.strip()
+                            # Skip Troubleshooting Codes, HTTP Status Codes, and any table-only or pipe/dash-only sections
+                            lower_section = section.lower()
+                            if (
+                                lower_section.startswith('## 7. troubleshooting codes') or
+                                lower_section.startswith('### http status codes') or
+                                'troubleshooting codes' in lower_section or
+                                'http status codes' in lower_section or
+                                # skip if section is just a table or pipes/dashes
+                                all((not c.isalnum()) for c in section.replace('|','').replace('-','').replace('–','').replace('—','').replace(' ','').replace('\n','')) or
+                                # skip if section is just a markdown table (starts with | and has multiple |)
+                                (section.startswith('|') and section.count('|') > 2)
+                            ):
+                                continue
+                            if section:
+                                st.markdown(section)
                                 if i < len(sections) - 1:  # Add separator between sections
                                     st.divider()
                     else:
@@ -276,22 +453,41 @@ elif mode == "Agent Investigation":
                                 formatted_parts.append(part)
                                 i += 1
                             
-                            # Join and display
+                            # Join and display with structured formatting
                             formatted_message = '\n\n'.join(formatted_parts)
-                            st.markdown(f"""
-                            <div style="background-color: #f0f8ff; padding: 15px; border-radius: 8px; border-left: 4px solid #1f77b4;">
-                            {formatted_message}
-                            </div>
-                            """, unsafe_allow_html=True)
+                            
+                            st.markdown('<div class="response-container">', unsafe_allow_html=True)
+                            st.markdown('<div class="response-header">📧 Message Sent to Merchants</div>', unsafe_allow_html=True)
+                            
+                            # Parse message into sections
+                            sections = formatted_message.split('\n\n')
+                            for section in sections:
+                                if section.strip():
+                                    if section.strip().startswith('```'):
+                                        # Code block
+                                        code_content = section.replace('```', '').strip()
+                                        st.code(code_content, language='http')
+                                    elif 'https://' in section:
+                                        # URL section - make links clickable
+                                        import re
+                                        urls = re.findall(r'https://[^\s]+', section)
+                                        formatted_section = section
+                                        for url in urls:
+                                            if url and url != 'https://':
+                                                formatted_section = formatted_section.replace(url, f'[{url}]({url})')
+                                        st.markdown(formatted_section)
+                                    else:
+                                        st.markdown(section)
+                            
+                            st.markdown('</div>', unsafe_allow_html=True)
                             
                         except Exception as e:
-                            # Fallback formatting
+                            # Fallback formatting with structure
                             formatted_response = draft_response.replace('\\n', '\n\n').replace('\\"', '"')
-                            st.markdown(f"""
-                            <div style="background-color: #f0f8ff; padding: 15px; border-radius: 8px; border-left: 4px solid #1f77b4;">
-                            {formatted_response}
-                            </div>
-                            """, unsafe_allow_html=True)
+                            st.markdown('<div class="response-container">', unsafe_allow_html=True)
+                            st.markdown('<div class="response-header">📧 Message Sent to Merchants</div>', unsafe_allow_html=True)
+                            st.markdown(formatted_response)
+                            st.markdown('</div>', unsafe_allow_html=True)
                         
                         # Show timestamp
                         import datetime
@@ -299,86 +495,53 @@ elif mode == "Agent Investigation":
                         
                 elif confidence >= 0.6:  # Medium confidence - require approval
                     st.markdown("#### ⚠️ Response Requires Approval")
-                    st.warning(f"Medium confidence ({confidence:.1%}). Please review and approve the suggested response.")
+                    st.warning(f"Medium confidence ({confidence:.1%}). Please review and approve or edit the suggested response.")
                     
-                    with st.container():
-                        st.markdown("**Suggested Response:**")
-                        # Parse and format the response content
-                        try:
-                            import json
-                            import re
-                            if draft_response.strip().startswith('{'):
-                                parsed = json.loads(draft_response)
-                                message_content = parsed.get('message_body', draft_response)
-                            else:
-                                message_content = draft_response
-                            
-                            # Clean up escape characters
-                            message_content = message_content.replace('\\n', '\n').replace('\\"', '"')
-                            
-                            # Split message into parts for better formatting
-                            parts = message_content.split('\n')
-                            formatted_parts = []
-                            
-                            i = 0
-                            while i < len(parts):
-                                part = parts[i].strip()
-                                
-                                # Check for API endpoints (GET, POST, etc.)
-                                if re.match(r'^(GET|POST|PUT|DELETE|PATCH)\s+/', part):
-                                    # Collect the full API block
-                                    api_block = [part]
-                                    i += 1
-                                    while i < len(parts) and (parts[i].strip().startswith('Headers:') or parts[i].strip().startswith('{') or parts[i].strip() == '}'):
-                                        api_block.append(parts[i].strip())
-                                        i += 1
-                                    
-                                    # Format as code block
-                                    formatted_parts.append(f"```\n{chr(10).join(api_block)}\n```")
-                                    continue
-                                
-                                # Check for URLs
-                                if 'https://' in part:
-                                    urls = re.findall(r'https://[^\s]+', part)
-                                    for url in urls:
-                                        part = part.replace(url, f'[{url}]({url})')
-                                
-                                # Check for deprecated field mentions
-                                if 'product_image' in part and 'images' in part:
-                                    part = part.replace('product_image', '`product_image`').replace(' images', ' `images`')
-                                
-                                formatted_parts.append(part)
-                                i += 1
-                            
-                            # Join and display
-                            formatted_message = '\n\n'.join(formatted_parts)
-                            st.markdown(f"""
-                            <div style="background-color: #424242; color: grey; padding: 15px; border-radius: 8px; border-left: 4px solid #757575;">
-                            {formatted_message}
-                            </div>
-                            """, unsafe_allow_html=True)
-                            
-                        except Exception as e:
-                            # Fallback formatting
-                            formatted_response = draft_response.replace('\\n', '\n\n').replace('\\"', '"')
-                            st.markdown(f"""
-                            <div style="background-color: #fff3cd; padding: 15px; border-radius: 8px; border-left: 4px solid #ffc107;">
-                            {formatted_response}
-                            </div>
-                            """, unsafe_allow_html=True)
-                        
-                        # Approval buttons
+                    # Parse and format the response content
+                    try:
+                        import json
+                        import re
+                        if draft_response.strip().startswith('{'):
+                            parsed = json.loads(draft_response)
+                            message_content = parsed.get('message_body', draft_response)
+                        else:
+                            message_content = draft_response
+                        message_content = message_content.replace('\\n', '\n').replace('\\"', '"')
+                    except Exception:
+                        message_content = draft_response.replace('\\n', '\n').replace('\\"', '"')
+                    
+                    if not st.session_state['edit_mode']:
+                        st.markdown('<div class="message-container">', unsafe_allow_html=True)
+                        st.markdown(message_content)
+                        st.markdown('</div>', unsafe_allow_html=True)
                         col1, col2, col3 = st.columns([1, 1, 2])
                         with col1:
-                            if st.button(" Approve & Send", type="primary"):
-                                st.success(" Response approved and sent to merchants!")
+                            if st.button("Approve & Send", key="approve_send_btn", type="primary"):
+                                st.success("Response approved and sent to merchants!")
                                 st.balloons()
                         with col2:
-                            if st.button(" Reject"):
-                                st.error(" Response rejected. Escalated to human support team.")
+                            if st.button("Reject", key="reject_btn"):
+                                st.error("Response rejected. Escalated to human support team.")
                         with col3:
-                            if st.button(" Edit & Send"):
-                                st.info(" Redirecting to response editor...")
+                            if st.button("Edit", key="edit_btn"):
+                                st.session_state['edit_mode'] = True
+                                st.session_state['edited_response'] = message_content
+                                st.rerun()
+                    else:
+                        edited = st.text_area("Edit the response below:", value=st.session_state.get('edited_response', message_content), height=300, key="edit_area")
+                        col1, col2 = st.columns([1, 1])
+                        with col1:
+                            if st.button("Send", key="send_edit_btn", type="primary"):
+                                st.session_state['edit_mode'] = False
+                                st.session_state['edited_response'] = edited
+                                st.success("Edited response sent to merchants!")
+                                st.balloons()
+                                st.rerun()
+                        with col2:
+                            if st.button("Cancel", key="cancel_edit_btn"):
+                                st.session_state['edit_mode'] = False
+                                st.session_state['edited_response'] = ''
+                                st.rerun()
                 else:  # Low confidence - escalate
                     st.markdown("#### 🚨 Low Confidence - Human Review Required")
                     st.error(f"Low confidence ({confidence:.1%}). This case has been escalated to human support.")
@@ -437,22 +600,41 @@ elif mode == "Agent Investigation":
                                 formatted_parts.append(part)
                                 i += 1
                             
-                            # Join and display
+                            # Join and display with structured formatting
                             formatted_message = '\n\n'.join(formatted_parts)
-                            st.markdown(f"""
-                            <div style="background-color: #f8d7da; padding: 15px; border-radius: 8px; border-left: 4px solid #dc3545;">
-                            {formatted_message}
-                            </div>
-                            """, unsafe_allow_html=True)
+                            
+                            st.markdown('<div class="response-container">', unsafe_allow_html=True)
+                            st.markdown('<div class="response-header">🚨 AI Suggestion (Requires Human Review)</div>', unsafe_allow_html=True)
+                            
+                            # Parse message into sections
+                            sections = formatted_message.split('\n\n')
+                            for section in sections:
+                                if section.strip():
+                                    if section.strip().startswith('```'):
+                                        # Code block
+                                        code_content = section.replace('```', '').strip()
+                                        st.code(code_content, language='http')
+                                    elif 'https://' in section:
+                                        # URL section - make links clickable
+                                        import re
+                                        urls = re.findall(r'https://[^\s]+', section)
+                                        formatted_section = section
+                                        for url in urls:
+                                            if url and url != 'https://':
+                                                formatted_section = formatted_section.replace(url, f'[{url}]({url})')
+                                        st.markdown(formatted_section)
+                                    else:
+                                        st.markdown(section)
+                            
+                            st.markdown('</div>', unsafe_allow_html=True)
                             
                         except Exception as e:
-                            # Fallback formatting
+                            # Fallback formatting with structure
                             formatted_response = draft_response.replace('\\n', '\n\n').replace('\\"', '"')
-                            st.markdown(f"""
-                            <div style="background-color: #f8d7da; padding: 15px; border-radius: 8px; border-left: 4px solid #dc3545;">
-                            {formatted_response}
-                            </div>
-                            """, unsafe_allow_html=True)
+                            st.markdown('<div class="response-container">', unsafe_allow_html=True)
+                            st.markdown('<div class="response-header">🚨 AI Suggestion (Requires Human Review)</div>', unsafe_allow_html=True)
+                            st.markdown(formatted_response)
+                            st.markdown('</div>', unsafe_allow_html=True)
             
             # Proposed Action
             if result.get('proposed_action'):
@@ -519,12 +701,49 @@ elif mode == "Full Pipeline":
                 if confidence >= 0.8:
                     st.markdown("**Status:** ✅ Response automatically sent (high confidence)")
                     with st.expander("📧 View sent message", expanded=False):
-                        formatted_response = draft_response.replace('\n', '\n\n')
-                        st.markdown(f"""
-                        <div style="background-color: #f0f8ff; padding: 15px; border-radius: 8px; border-left: 4px solid #1f77b4;">
-                        {formatted_response}
-                        </div>
-                        """, unsafe_allow_html=True)
+                        # Better formatting for pipeline output
+                        try:
+                            import json
+                            import re
+                            
+                            # Parse JSON if it's structured
+                            if draft_response.strip().startswith('{'):
+                                parsed = json.loads(draft_response)
+                                message_content = parsed.get('message_body', draft_response)
+                            else:
+                                message_content = draft_response
+                            
+                            # Clean up escape characters
+                            message_content = message_content.replace('\\n', '\n').replace('\\"', '"')
+                            
+                            st.markdown('<div class="response-container">', unsafe_allow_html=True)
+                            st.markdown('<div class="response-header">📧 Auto-Sent Message</div>', unsafe_allow_html=True)
+                            
+                            # Split into sections for better display
+                            sections = message_content.split('\n\n')
+                            for section in sections:
+                                if section.strip():
+                                    if re.match(r'^(GET|POST|PUT|DELETE|PATCH)\s+/', section):
+                                        st.code(section, language='http')
+                                    elif 'https://' in section:
+                                        # Handle URLs
+                                        urls = re.findall(r'https://[^\s]+', section)
+                                        formatted_section = section
+                                        for url in urls:
+                                            if url and url != 'https://':
+                                                formatted_section = formatted_section.replace(url, f'[{url}]({url})')
+                                        st.markdown(formatted_section)
+                                    else:
+                                        st.markdown(section)
+                            
+                            st.markdown('</div>', unsafe_allow_html=True)
+                            
+                        except:
+                            # Fallback
+                            formatted_response = draft_response.replace('\\n', '\n\n').replace('\\"', '"')
+                            st.markdown('<div class="message-container">', unsafe_allow_html=True)
+                            st.markdown(formatted_response)
+                            st.markdown('</div>', unsafe_allow_html=True)
                 elif confidence >= 0.6:
                     st.markdown("**Status:** ⚠️ Awaiting approval")
                 else:
@@ -537,23 +756,3 @@ elif mode == "Full Pipeline":
                 st.markdown("**Investigation Result:**")
                 st.json(investigation_result)
 
-
-else:  # Full Pipeline
-    st.markdown('<div class="subheader">Full Agentic Pipeline</div>', unsafe_allow_html=True)
-    st.markdown("End-to-End: Ticket Clustering → Incident Detection → Multi-Agent Investigation")
-    if st.button("Run Complete Pipeline", type="primary", use_container_width=True):
-        progress = st.progress(0)
-        status = st.empty()
-        # Step 1: Clustering
-        status.write("Step 1: ML-Powered Clustering")
-        # You will need to adapt this to your new clustering logic
-        # ...clustering logic here...
-        progress.progress(40)
-        # Step 2: Investigation
-        status.write("Step 2: Multi-Agent Investigation")
-        # ...investigation logic here...
-        progress.progress(100)
-        status.write("Pipeline Complete!")
-        st.divider()
-        st.markdown('<div class="subheader">Results Summary</div>', unsafe_allow_html=True)
-        # ...display results summary here...
