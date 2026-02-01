@@ -1,181 +1,127 @@
-# 🧬 Helix  
-### Agentic AI for Self-Healing Support During Headless E-commerce Migration
+# Agentic AI Support System for E-commerce Migration: Helix
+
+**Advanced incident detection and resolution using hybrid machine learning and multi-agent orchestration**
 
 ---
 
-## 📌 Problem Overview
+## Overview
 
-As large e-commerce SaaS platforms migrate merchants from a fully hosted setup to a **headless architecture**, support teams face a surge of issues such as:
+This system provides autonomous support incident detection, classification, and resolution during headless e-commerce platform migrations. It combines machine learning-based clustering with multi-agent reasoning to identify, analyze, and respond to merchant support issues in real-time.
 
-- Broken checkouts  
-- Misconfigured APIs  
-- Missing or duplicated webhooks  
-- Frontend–backend mismatches  
-- Features that worked before migration but suddenly fail  
+## Key Features
 
-Support tickets arrive faster than humans can analyze them, and it becomes unclear whether an issue is caused by:
+### 🧠 Hybrid ML Classification
 
-- Merchant misconfiguration  
-- Platform regressions  
-- Migration mistakes  
-- Documentation gaps  
+- **DBSCAN clustering** for incident pattern detection
+- **Logistic regression** with feature engineering for classification
+- **Semantic embeddings** using transformer models
+- **75.1% accuracy** with balanced multi-class prediction
 
-By the time patterns are detected, **multiple merchants are already impacted**.
+### 🤖 Multi-Agent System
 
----
+- **Investigator**: Analyzes error logs and merchant data
+- **Researcher**: Searches documentation and knowledge base
+- **Analyst**: Performs root cause analysis with confidence scoring
+- **Responder**: Generates contextual responses and action plans
 
-## 🎯 Our Goal
+### ⚡ Intelligent Response Handling
 
-We built **Helix**, an **agentic AI support layer** that works inside the SaaS platform to help support and engineering teams detect, understand, and respond to merchant issues **early and safely** during headless migration.
+- **High confidence (≥80%)**: Automated response deployment
+- **Medium confidence (60-79%)**: Human approval workflow
+- **Low confidence (<60%)**: Escalation to support team
 
-The agent focuses **only on merchant-level data**.  
-It does **not** interact with end customers or handle sensitive payment information.
+### 📊 Real-Time Analytics
 
----
+- Live incident clustering and classification
+- Confidence-based decision routing
+- Technical indicator extraction
+- Performance metrics and model evaluation
 
-## 🧠 What the Agent Does
-
-Whenever a merchant raises a support ticket or when platform errors are logged, the agent is triggered.
-
-It:
-
-- Observes merchant-level signals  
-- Reasons about the root cause of the issue  
-- Decides the most appropriate next step  
-- Recommends safe actions with clear explanations  
-
-The agent acts as a **decision-support system**, not an autonomous code-changing system.
-
----
-
-## 🔍 Signals the Agent Observes
-
-The agent ingests and correlates multiple system signals, including:
-
-- Merchant support tickets  
-- Failed checkouts  
-- API errors  
-- Webhook failures  
-- Repeated merchant errors  
-- Merchant migration stage (pre / in / post migration)  
-
----
-
-## 🧠 How the Agent Reasons
-
-For each issue, the agent determines whether the problem is most likely due to:
-
-- Merchant configuration errors  
-- Platform regressions  
-- Migration steps being missed  
-- Documentation gaps affecting many merchants  
-
-The agent compares the issue against:
-
-- Historical merchant data  
-- Error patterns across multiple merchants  
-- Migration context  
-
----
-
-## ⚖️ Decisions & Actions 
-
-The agent does **not**:
-
-- Modify live checkout logic  
-- Deploy code  
-- Handle refunds or payments  
-
-Instead, it recommends actions such as:
-
-- Providing clear guidance to support teams  
-- Proactively notifying affected merchants  
-- Escalating issues to engineering  
-- Flagging documentation updates  
-
-Every recommendation includes:
-
-- A clear explanation  
-- A confidence level  
-- An indication of whether human approval is required  
-
-Humans always remain in control.
-
----
-
-## 🔁 Why This Is Agentic AI
-
-**Helix** is not a simple chatbot.
-
-It demonstrates agentic behavior by:
-
-- Continuously observing system signals  
-- Maintaining state and memory  
-- Detecting patterns across merchants  
-- Making context-aware decisions  
-- Explaining its reasoning transparently  
-
-This allows teams to respond **before issues escalate**.
-
----
-
-## 🧩 High-Level Architecture
+## Architecture
 
 ```
+Support Tickets → ML Classification → Incident Clustering → Multi-Agent Analysis → Response Generation
+                     ↓                        ↓                      ↓                    ↓
+               Feature Engineering    Semantic Grouping    Root Cause Analysis    Automated Actions
+```
 
-Customer ↔ Merchant
-Merchant → Support Ticket / Errors
-Agent observes merchant-level data
-Agent reasons about root cause
-Agent coordinates support / product / engineering
+## Technical Stack
 
-````
+- **Python 3.11** - Core runtime
+- **scikit-learn** - Machine learning pipeline
+- **sentence-transformers** - Semantic embeddings
+- **LangChain/LangGraph** - Multi-agent orchestration
+- **Streamlit** - Interactive dashboard
+- **Groq API** - LLM inference
 
----
-
-## 🛠️ Tech Stack
-
-- Python  
-- Streamlit (for explainable UI)  
-- JSON-based mock datasets  
-- Rule + LLM-assisted reasoning (agent logic)  
-
----
-
-## 🚀 How to Run the Project
+## Installation
 
 ```bash
+# Clone repository
+git clone <repository-url>
+cd B076_CC_AgenticAI
+
+# Install dependencies
 pip install -r requirements.txt
-streamlit run app.py
-````
 
----
+# Run ML training and clustering
+python models.py
 
-## 🧪 Example Agent Output
+# Launch web interface
+streamlit run sample_UI.py
 
-```json
-{
-  "belief": "Likely webhook misconfiguration after migration",
-  "confidence": 0.81,
-  "recommended_action": "Notify merchant and escalate to engineering",
-  "requires_human_approval": true
-}
+# View documentation
+streamlit run docs_viewer.py
 ```
 
+## Usage
+
+### 1. Incident Detection
+
+The ML model automatically processes support tickets and generates incidents:
+
+```python
+from models import HybridTicketClassifier
+
+classifier = HybridTicketClassifier()
+classifier.load_tickets()
+incidents = classifier.run_clustering()
+```
+
+### 2. Agent Investigation
+
+Multi-agent system analyzes incidents and provides recommendations:
+
+```python
+from agent_graph import run_agent_on_incident
+
+result = run_agent_on_incident(incident_data)
+confidence = result['confidence_score']
+response = result['draft_response']
+```
+
+### 3. Dashboard Monitoring
+
+Access the Streamlit dashboard for real-time monitoring and manual oversight.
+
+## Model Performance
+
+- **Classification Accuracy**: 75.1% (±14.9%)
+- **Clustering Quality**: 98% tickets clustered, 2% noise
+- **Response Confidence**: 70-85% average confidence scores
+- **Category Distribution**: 51% user error, 31% platform issues, 18% documentation gaps
+
+
+## Contributing
+
+1. Ensure all tests pass: `python -m pytest`
+2. Run ML validation: `python models.py`
+3. Check agent performance: `python agent_graph.py`
+
+## License
+
+MIT License - See LICENSE file for details
+
 ---
 
-## 📈 Why This Matters
-
-By identifying issues early and coordinating the right response, **Helix**:
-
-* Reduces support overload
-* Prevents repeated merchant impact
-* Improves trust during migration
-* Helps teams act proactively instead of reactively
-
----
-
-## 🏁 Conclusion
-
-**Helix** demonstrates how agentic AI can be used responsibly in production systems — observing, reasoning, and recommending actions while keeping humans in the loop and respecting ethical boundaries.
-
+**Note**: This system is designed for merchant-level support automation and does not handle customer payment data or sensitive information.
