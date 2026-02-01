@@ -659,3 +659,207 @@ If you see sustained 500 errors across multiple requests, check the Status Page.
 ---
 
 **NexusCommerce Developer Support** - copyright 2023
+
+
+---
+
+## 4. Operational Guides
+
+### 4.1 Webhook Integration Guide
+
+Webhooks are the only way to receive real-time order, refund and inventory events.  
+A failed webhook will retry 5× with exponential back-off (1 s, 2 s, 4 s …) and then be dropped.  
+Dropped events are **not** recoverable via API.
+
+#### 4.1.1 Quick setup
+
+1. In the Merchant Dashboard go to **Settings → Developers → Webhooks → Add endpoint**
+2. Enter your HTTPS URL (port 443 only) and select the events you need
+3. Copy the **Signing secret** that is shown once
+
+#### 4.1.2 Verifying the signature
+
+Every request contains the header `X-Nexus-Signature-SHA256`.  
+Compute the HMAC-SHA256 of the raw body using the signing secret and compare:
+
+```javascript
+const crypto = require('crypto');
+
+function isValidSignature(body, signature, secret) {
+  const expected = `sha256=${crypto
+    .createHmac('sha256', secret)
+    .update(body, 'utf8')
+    .digest('hex')}`;
+  return crypto.timingSafeEqual(
+    Buffer.from(signature),
+    Buffer.from(expected)
+  );
+}
+```
+
+If the signature does not match respond with **HTTP 400** and the body `{"error":"bad_signature"}`;  
+this tells NexusCommerce to treat the delivery as failed and retry.
+
+#### 4.1.3 Idempotency
+
+Each event has a unique `event_id`. Store this in your DB and ignore duplicates.
+
+#### 4.1.4 Troubleshooting checklist
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| 401 from your own endpoint | Signature check fails | Ensure raw body, not parsed JSON, is used for HMAC |
+| No retries | Returned HTTP 2xx | Return 400 or 500 to trigger retry |
+| Still no retries | SSL handshake error | Certificate must chain to a public CA; self-signed certs are refused |
+| Events arrive but out of order | Clock skew | Use `created_at` inside payload for ordering, not arrival time |
+
+---
+
+### 4.2 Rate-Limit Reference
+
+All endpoints share the same token bucket.
+
+| Plan | Requests per rolling minute | Burst (peak) | Header name | Value example |
+|---|---|---|---|---|
+| Sandbox | 120 | 30 | `X-RateLimit-Remaining` | `87` |
+| Starter | 600 | 120 | `X-RateLimit-Reset` | `1681381200` |
+| Growth | 3 000 | 600 | `Retry-After` | `42` (seconds) |
+
+When the limit is hit we return **HTTP 429** and the `Retry-After` header.  
+Clients MUST wait the indicated number of seconds before sending the next request; continuing earlier will extend the ban window.
+
+Example backoff loop (Node.js):
+
+```javascript
+async function apiCall(path, body) {
+  let delay = 1;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const res = await fetch(`${BASE}/v2${path}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (res.status !== 429) return res;
+    const retryAfter = res.headers.get('Retry-After') || Math.min(delay, 60);
+    await new Promise(r => setTimeout(r, retryAfter * 1000));
+    delay *= 2;
+  }
+  throw new Error('Rate limit still active after 5 back-offs');
+}
+```
+
+---
+
+### 4.3 Locating Your API Keys (UI Walk-through)
+
+Dashboard URL: [https://merchant.nexuscommerce.com/settings/developers/api-tokens](https://merchant.nexuscommerce.com/settings/developers/api-tokens)
+
+1. Log in → left sidebar **Settings** (gear icon)
+2. Choose tab **Developers** (not "General")
+3. Click **API Tokens** sub-tab
+4. Press **Create New Token**  
+   Screenshot:  
+   ![API key location](https://cdn.nexuscommerce.com/docs/ui-api-tokens-v2.4.png)
+
+Deep-links for common environments:
+
+| Environment | Direct link |
+|---|---|
+| Production | [https://merchant.nexuscommerce.com/settings/developers/api-tokens](https://merchant.nexuscommerce.com/settings/developers/api-tokens) |
+| Staging EU | [https://staging-merchant.nexuscommerce.eu/settings/developers/api-tokens](https://staging-merchant.nexuscommerce.eu/settings/developers/api-tokens) |
+
+---
+
+### 4.4 Migration Guide (V1 → V2)
+
+#### 4.4.1 Pre-flight checks
+
+- [ ] Export order history: `GET /v1/orders?limit=250&page=…` (save JSON)
+- [ ] Note legacy `product_id` (int) → new `id` (UUID) mapping
+- [ ] Verify webhook URL can handle V2 payload shape (fields renamed: `orderId` → `id`, `lineItems` → `items`)
+- [ ] Ensure your token has `v2-migration` scope (visible in dashboard)
+
+#### 4.4.2 Upgrade steps
+
+1. Create a **new** V2 API token (do not reuse V1 token)
+2. Add V2 webhook endpoint alongside V1; set it to **disabled** for now
+3. Deploy code with new base URL `https://api.nexuscommerce.com/v2`
+4. Toggle V2 webhook to **enabled**; disable V1 webhook after 24 h grace period
+
+#### 4.4.3 Rollback plan
+
+If critical issues appear within 48 h:
+
+```bash
+# Revert environment variable on your servers
+export NEXUS_API_VERSION=v1
+# Dashboard: re-enable V1 webhooks, disable V2
+# Re-import any orders created during the window
+curl -X POST https://api.nexuscommerce.com/v1/orders/import \
+  -H "Authorization: Bearer $V1_TOKEN" \
+  -d @backup-orders.json
+```
+
+Rollback window > 48 h requires support ticket—data shape changes are irreversible after that period.
+
+---
+
+### 4.5 Image Upload Requirements
+
+Images may be supplied either as:
+
+- **File upload** (`multipart/form-data`) to `/v2/media` (returns URL), or
+- **Remote URL** in product create payload (must pass validation).
+
+| Rule | Limit |
+|---|---|
+| Formats | jpg, jpeg, png, webp, gif |
+| Max file size | 10 MB |
+| Min resolution | 500 × 500 px |
+| Max resolution | 8 000 × 8 000 px |
+| URL expiry | 24 h after creation (for presigned uploads) |
+
+Remote URL validation:
+
+- URL must respond **200 OK** within 5 s
+- `Content-Type` must start with `image/`
+- Server must send `Access-Control-Allow-Origin: *` if the image will be displayed in the merchant dashboard (otherwise thumbnails break)
+
+If you host images on AWS S3, attach this CORS policy to the bucket:
+
+```json
+[
+  {
+    "AllowedHeaders": ["*"],
+    "AllowedMethods": ["GET", "HEAD"],
+    "AllowedOrigins": ["https://merchant.nexuscommerce.com", "https://*.nexuscommerce.com"],
+    "ExposeHeaders": ["Content-Type", "Content-Length"]
+  }
+]
+```
+
+---
+
+### 4.6 CORS Troubleshooting Matrix (Self-Hosted Frontends)
+
+Use this table when the browser blocks requests although your origin is already whitelisted in **Settings → Security → CORS Origins**.
+
+| Browser error message | ACAO header missing? | Required response header | How to fix |
+|---|---|---|---|
+| `CORS header 'Access-Control-Allow-Origin' missing` | yes | `Access-Control-Allow-Origin: https://yourdomain.com` | Add origin to whitelist and ensure HTTPS matches exactly (no trailing slash) |
+| `Request header field x-customer-id is not allowed` | n/a | `Access-Control-Allow-Headers: x-customer-id, authorization, content-type` | In dashboard tick “Allow custom headers” or add them manually |
+| `The value of the 'Access-Control-Allow-Credentials' header is ''` | n/a | `Access-Control-Allow-Credentials: true` | Enable “Allow credentials” switch (required for cookies + `Authorization` header) |
+| `Redirect is not allowed for CORS preflight` | n/a | – | Ensure API is called over HTTPS directly; no 301/302 redirects |
+| `Reason: CORS request external redirect denied` | n/a | – | Same as above—check that BASE URL does **not** redirect `http://` to `https://` |
+
+Quick test from browser console:
+
+```javascript
+await fetch('https://api.nexuscommerce.com/v2/products', {
+  method: 'OPTIONS',
+  headers: { 'Origin': window.location.origin }
+});
+// Inspect response headers in Network tab
+```
+
+If any header is missing, revisit **Settings → Security → CORS Origins**, press **Rebuild CORS cache** (button appears after saving), then hard-reload your storefront.
