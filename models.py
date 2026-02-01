@@ -225,16 +225,19 @@ class HybridTicketClassifier:
         
         clustering = DBSCAN(
             eps=eps_optimal, 
-            min_samples=2,  # Minimum incident size
+            min_samples=2,  # Keep small incidents
             metric='cosine'
         ).fit(embeddings)
         
         self.df['cluster_id'] = clustering.labels_
         
-        # Step 4: Evaluate clustering quality
+        # Step 4: Split mega-clusters to prevent overly broad incidents
+        self._split_mega_clusters(embeddings)
+        
+        # Step 5: Evaluate clustering quality
         self._evaluate_clustering(embeddings)
         
-        # Step 5: Structure incidents with ML insights
+        # Step 6: Structure incidents with ML insights
         return self._structure_incidents_with_ml(embeddings, feature_columns)
     
     def _find_optimal_eps(self, embeddings, k=4):
@@ -247,13 +250,51 @@ class HybridTicketClassifier:
         # Sort distances to find knee
         distances = np.sort(distances[:, k-1], axis=0)
         
-        # Simple knee detection: find largest gap
-        diffs = np.diff(distances)
-        knee_idx = np.argmax(diffs)
-        optimal_eps = distances[knee_idx]
+        # More conservative eps selection for granular incidents
+        # Use 25th percentile instead of knee to avoid over-clustering
+        conservative_eps = np.percentile(distances, 25)
         
-        print(f"📐 Optimal eps found: {optimal_eps:.3f}")
+        # Cap eps at reasonable maximum to prevent mega-clusters
+        max_eps = 0.3  # More conservative maximum
+        optimal_eps = min(conservative_eps, max_eps)
+        
+        print(f"📐 Conservative eps found: {optimal_eps:.3f} (avoiding mega-clusters)")
         return optimal_eps
+    
+    def _split_mega_clusters(self, embeddings, max_cluster_size=15):
+        """Split clusters that are too large into smaller, more specific incidents"""
+        unique_clusters = set(self.df['cluster_id'])
+        next_cluster_id = max(unique_clusters) + 1 if unique_clusters else 0
+        
+        for cluster_id in list(unique_clusters):
+            if cluster_id == -1:  # Skip noise
+                continue
+                
+            cluster_mask = self.df['cluster_id'] == cluster_id
+            cluster_size = cluster_mask.sum()
+            
+            if cluster_size > max_cluster_size:
+                print(f"🔧 Splitting mega-cluster {cluster_id} (size: {cluster_size}) into smaller incidents")
+                
+                # Get cluster data
+                cluster_indices = np.where(cluster_mask)[0]
+                cluster_embeddings = embeddings[cluster_indices]
+                
+                # Use smaller eps for sub-clustering
+                sub_eps = 0.15  # Much more conservative for sub-clusters
+                sub_clustering = DBSCAN(
+                    eps=sub_eps, 
+                    min_samples=2, 
+                    metric='cosine'
+                ).fit(cluster_embeddings)
+                
+                # Reassign cluster IDs
+                for i, sub_label in enumerate(sub_clustering.labels_):
+                    original_idx = cluster_indices[i]
+                    if sub_label == -1:  # Keep as original cluster if noise
+                        continue
+                    else:
+                        self.df.iloc[original_idx, self.df.columns.get_loc('cluster_id')] = next_cluster_id + sub_label
     
     def _evaluate_clustering(self, embeddings):
         """Comprehensive clustering evaluation"""

@@ -1,5 +1,3 @@
-
-
 import streamlit as st
 import json
 from agent_tools import check_platform_health
@@ -11,7 +9,6 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
-
 
 # Custom CSS for modern, clean look
 st.markdown("""
@@ -43,9 +40,6 @@ st.markdown("""
 }
 </style>
 """, unsafe_allow_html=True)
-
-
-
 
 # Header
 st.markdown('<div class="header">Agentic AI for Self-Healing Migration Support</div>', unsafe_allow_html=True)
@@ -185,9 +179,24 @@ elif mode == "Agent Investigation":
                             st.code(line)
             
             # Documentation Evidence
-            if result.get('docs_data'):
+            if result.get('docs_data') and result['docs_data'] != "Documentation search failed. Using symptom analysis for diagnosis.":
                 with st.expander("📚 Documentation Evidence", expanded=False):
-                    st.markdown(result.get('docs_data'))
+                    # Clean up and format the documentation
+                    docs_content = result.get('docs_data', '')
+                    if "No specific documentation found" not in docs_content and "Documentation search failed" not in docs_content:
+                        # Split by section separators for better formatting
+                        sections = docs_content.split('---')
+                        for i, section in enumerate(sections):
+                            if section.strip():
+                                st.markdown(section.strip())
+                                if i < len(sections) - 1:  # Add separator between sections
+                                    st.divider()
+                    else:
+                        st.info("No relevant documentation found for this specific issue.")
+            else:
+                # Always show the expander but indicate no results
+                with st.expander("📚 Documentation Evidence", expanded=False):
+                    st.info("Documentation search was not performed or returned no results.")
             
             # Response Handling based on confidence AND business logic
             confidence = result.get('confidence_score', 0)
@@ -344,7 +353,7 @@ elif mode == "Agent Investigation":
                             # Join and display
                             formatted_message = '\n\n'.join(formatted_parts)
                             st.markdown(f"""
-                            <div style="background-color: #fff3cd; padding: 15px; border-radius: 8px; border-left: 4px solid #ffc107;">
+                            <div style="background-color: #424242; color: grey; padding: 15px; border-radius: 8px; border-left: 4px solid #757575;">
                             {formatted_message}
                             </div>
                             """, unsafe_allow_html=True)
@@ -361,15 +370,15 @@ elif mode == "Agent Investigation":
                         # Approval buttons
                         col1, col2, col3 = st.columns([1, 1, 2])
                         with col1:
-                            if st.button("✅ Approve & Send", type="primary"):
-                                st.success("✅ Response approved and sent to merchants!")
+                            if st.button(" Approve & Send", type="primary"):
+                                st.success(" Response approved and sent to merchants!")
                                 st.balloons()
                         with col2:
-                            if st.button("❌ Reject"):
-                                st.error("❌ Response rejected. Escalated to human support team.")
+                            if st.button(" Reject"):
+                                st.error(" Response rejected. Escalated to human support team.")
                         with col3:
-                            if st.button("📝 Edit & Send"):
-                                st.info("📝 Redirecting to response editor...")
+                            if st.button(" Edit & Send"):
+                                st.info(" Redirecting to response editor...")
                 else:  # Low confidence - escalate
                     st.markdown("#### 🚨 Low Confidence - Human Review Required")
                     st.error(f"Low confidence ({confidence:.1%}). This case has been escalated to human support.")
