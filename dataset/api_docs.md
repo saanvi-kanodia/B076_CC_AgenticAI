@@ -659,3 +659,231 @@ If you see sustained 500 errors across multiple requests, check the Status Page.
 ---
 
 **NexusCommerce Developer Support** - copyright 2023
+
+
+---
+
+## 4. Webhooks, Throttling & Migration Reference
+
+### 4.1 Webhook Monitoring & Retry Setup
+
+**Common failure symptoms**
+- Dashboard shows “Webhook skipped (4xx/5xx)”
+- Your endpoint never receives the JSON payload
+- Events are queued but never delivered
+
+**Step-by-step health check**
+1. Verify your endpoint returns `200` within 10 s  
+   ```bash
+   curl -X POST https://your-app.com/webhooks/nexus \
+        -H "Content-Type: application/json" \
+        -d '{"test":true}' \
+        -w "HTTP %{http_code} Total time: %{time_total}s\n"
+   ```
+2. Log the `NX-Signature` header and compare:
+   ```js
+   const crypto = require('crypto');
+   const hmac = crypto.createHmac('sha256', process.env.WEBHOOK_SECRET);
+   hmac.update(rawBody);
+   const expected = `sha256=${hmac.digest('hex')}`;
+   if (req.headers['nx-signature'] !== expected) return res.status(401).end();
+   ```
+3. If your firewall filters traffic, allow the IP set below.
+
+**Retry policy (built-in)**
+- 3 attempts: immediately → 30 s → 5 min  
+- After 3 failures the webhook is **disabled** and an email is sent.  
+- Re-enable manually in **Settings > Developers > Webhooks** or via:
+  ```http
+  PATCH /v2/webhooks/{id}
+  { "enabled": true }
+  ```
+
+**IP whitelist for firewalls**
+```
+52.84.150.10/32
+52.84.150.11/32
+52.84.150.12/32
+```
+
+---
+
+### 4.2 Rate-Limiting & Throttling Reference
+
+**Headers returned on every request**
+| Header                  | Meaning                          | Example |
+|-------------------------|----------------------------------|---------|
+| `X-RateLimit-Limit`     | requests allowed per window      | 1000    |
+| `X-RateLimit-Remaining` | requests left in current window  | 42      |
+| `X-RateLimit-Reset`     | Unix timestamp of next reset      | 1703123400 |
+
+**HTTP 429 response body**
+```json
+{
+  "error": "Too Many Requests",
+  "retry_after": 13
+}
+```
+
+**Exponential-backoff snippet (Node.js)**
+```js
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function nexusRequest(url, options, attempt = 1) {
+  const resp = await fetch(url, options);
+  if (resp.status === 429) {
+    const { retry_after } = await resp.json();
+    await sleep((retry_after || Math.pow(2, attempt)) * 1000);
+    return nexusRequest(url, options, attempt + 1);
+  }
+  if (!resp.ok) throw new Error(await resp.text());
+  return resp.json();
+}
+```
+
+**Default limits**
+| Plan        | Requests/min | Burst | Concurrent |
+|-------------|--------------|-------|------------|
+| Sandbox     | 100          | 10    | 5          |
+| Growth      | 1 000        | 100   | 20         |
+| Enterprise  | 10 000       | 1 000 | 100        |
+
+Raise a ticket to increase limits.
+
+---
+
+### 4.3 Order History API (incl. old orders)
+
+**Endpoint:** `GET /v2/orders/history`
+
+**Query parameters**
+| Param | Type   | Description                     |
+|-------|--------|---------------------------------|
+| from  | string | ISO-8601 start (inclusive)       |
+| to    | string | ISO-8601 end (inclusive)        |
+| status| string | comma-separated list            |
+| page  | int    | default 1                       |
+| per_page| int  | max 250, default 50             |
+
+**Example request**
+```http
+GET /v2/orders/history?from=2022-01-01T00:00:00Z&to=2022-12-31T23:59:59Z&status=completed&per_page=50&page=2
+Authorization: Bearer <token>
+```
+
+**Response headers**
+```
+X-Total-Count: 3827
+X-Page-Count: 77
+X-Page: 2
+Link: <https://api.nexuscommerce.com/v2/orders/history?page=3>; rel="next"
+```
+
+**cURL for oldest orders**
+```bash
+curl -G https://api.nexuscommerce.com/v2/orders/history \
+  -H "Authorization: Bearer <token>" \
+  -d from=2019-01-01 \
+  -d to=2019-12-31 \
+  -d per_page=250
+```
+
+---
+
+### 4.4 Media Upload Requirements
+
+**Accepted formats**
+- Images: `jpg`, `jpeg`, `png`, `webp`, `gif` (max 5 MB)
+- Videos: `mp4`, `mov` (max 100 MB)
+
+**Image-URL validation rules**
+1. Must be publicly reachable (`HEAD` returns 200)
+2. Must serve over HTTPS (except `localhost`)
+3. Domain must be in allow-list (see below)
+4. Must not exceed 5 MB
+5. Minimum resolution 250×250 px, maximum 10 000×10 000 px
+
+**Allow-listing external domains**
+Add domains in **Settings > Storefront > Media Domains** before referencing them:
+```
+https://cdn.example.com
+https://images.unsplash.com
+```
+
+**Typical rejection reasons**
+| Error message | Fix |
+|---------------|-----|
+| “URL not whitelisted” | Add domain to Media Domains |
+| “SSL certificate problem” | Serve image over valid HTTPS |
+| “Image too small” | Provide at least 250×250 px |
+
+---
+
+### 4.5 Migration Guide & Rollback
+
+**Pre-flight checks**
+```bash
+# 1. Export current catalog
+curl -s -H "Authorization: Bearer <token>" \
+  https://api.nexuscommerce.com/v2/products/export > products-backup.json
+
+# 2. Validate JSON
+npx nx-validate products-backup.json
+
+# 3. Check breaking changes
+curl -s https://api.nexuscommerce.com/v2/changes?from=2.3.0
+```
+
+**Rolling upgrade (zero-downtime)**
+1. Point staging frontend to staging API; run E2E tests.
+2. Create new Production token with **read-write** scope.
+3. Deploy backend code compatible with 2.4 contracts.
+4. Switch CNAME to new API gateway.
+5. Monitor `/health` endpoint for 5 min.
+
+**Rollback commands (if critical regression)**
+```bash
+# Revert gateway route
+export VERSION=2.3.0
+kubectl patch deployment api-gateway -p \
+  "{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"version\":\"$VERSION\"}}}}}"
+
+# Restore catalog snapshot
+curl -X POST https://api.nexuscommerce.com/v2/products/import \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d @products-backup.json
+```
+Rollback window: 24 h after which 2.3 snapshots are purged.
+
+---
+
+### 4.6 CORS Troubleshooting FAQ
+
+**Symptom:** `Access-Control-Allow-Origin` missing, yet domain is whitelisted  
+**Causes & Fixes**
+1. **Trailing slash mismatch**  
+   Whitelist exactly `https://app.mystore.com` **not** `https://app.mystore.com/`
+2. **Port omission for localhost**  
+   Add `http://localhost:3000` separately from `https://localhost:3000`
+3. **Credential flag**  
+   If `credentials: 'include'` is used, the header `Access-Control-Allow-Credentials: true` is required; our CORS layer adds it automatically for whitelisted origins.
+
+**Preflight (OPTIONS) failures**
+- Ensure your server answers `OPTIONS` with 200 and these headers:
+  ```
+  Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+  Access-Control-Allow-Headers: Authorization, Content-Type, Accept-Version
+  Access-Control-Max-Age: 86400
+  ```
+
+**Debug snippet (browser console)**
+```js
+fetch('https://api.nexuscommerce.com/v2/products', {
+  method: 'GET',
+  headers: {Authorization: 'Bearer <token>'},
+  mode: 'cors',
+  credentials: 'include'
+}).then(r => console.log(r.status)).catch(console.error);
+```
+
+Still stuck? Send us the output of `curl -v -X OPTIONS ...` and the `trace-id` from the response headers.
