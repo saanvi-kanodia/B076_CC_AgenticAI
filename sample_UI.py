@@ -189,11 +189,31 @@ elif mode == "Agent Investigation":
                 with st.expander("📚 Documentation Evidence", expanded=False):
                     st.markdown(result.get('docs_data'))
             
-            # Response Handling based on confidence
+            # Response Handling based on confidence AND business logic
             confidence = result.get('confidence_score', 0)
             draft_response = result.get('draft_response', '')
             
+            # Check for financial impact to override confidence thresholds
+            is_financial = any(keyword in selected_incident.get('summary', '').lower() 
+                             for keyword in ['payment', 'checkout', 'order', 'revenue', 'billing'])
+            
+            merchant_count = len(selected_incident.get('affected_merchants', []))
+            is_cross_merchant = merchant_count >= 3
+            
             if draft_response:
+                # BUSINESS RULE: Financial issues cap confidence at 75%
+                if is_financial and confidence >= 0.75:
+                    st.markdown("#### 💰 Financial Impact - Human Review Required")
+                    st.error(f"Financial impact detected. Confidence capped at 75% for safety. Manual review required.")
+                    confidence = 0.74  # Force into manual review category
+                
+                # BUSINESS RULE: Cross-merchant issues need human oversight  
+                elif is_cross_merchant and confidence >= 0.7:
+                    st.markdown("#### 🏢 Cross-Merchant Pattern - Platform Review")
+                    st.warning(f"Cross-merchant issue ({merchant_count} merchants) - likely platform bug. Engineering review required.")
+                    confidence = 0.69  # Force manual review
+                
+                # Original confidence-based routing with business overrides
                 if confidence >= 0.8:  # High confidence - auto-send
                     st.markdown("#### ✅ Response Sent to Merchants")
                     st.success("High confidence classification detected. Message automatically sent to affected merchants.")

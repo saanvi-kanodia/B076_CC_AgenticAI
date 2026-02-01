@@ -1,7 +1,6 @@
 import json
 import numpy as np
 import pandas as pd
-import re
 from sentence_transformers import SentenceTransformer
 from sklearn.cluster import DBSCAN
 from sklearn.linear_model import LogisticRegression
@@ -17,7 +16,17 @@ class HybridTicketClassifier:
     def __init__(self, data_path="dataset/tickets.json"):
         self.data_path = data_path
         print("⏳ Loading embedding model (all-MiniLM-L6-v2)...")
-        self.model = SentenceTransformer('all-MiniLM-L6-v2')
+        
+        # Add caching and performance monitoring
+        self._embedding_cache = {}
+        self._start_time = None
+        
+        try:
+            self.model = SentenceTransformer('all-MiniLM-L6-v2')
+        except Exception as e:
+            print(f"⚠️ Failed to load sentence transformer: {e}")
+            print("📝 Running in mock mode for demo purposes")
+            self.model = None
         
         # Initialize ML components
         self.tfidf = TfidfVectorizer(max_features=1000, stop_words='english')
@@ -72,7 +81,20 @@ class HybridTicketClassifier:
         merchant_counts = self.df['merchant_id'].value_counts()
         self.df['merchant_frequency'] = self.df['merchant_id'].map(merchant_counts)
         
-        # Text length features
+        # Business-aware feature engineering
+        self.df['is_revenue_critical'] = self.df['full_text'].str.contains(
+            'checkout|payment|cart|order|revenue|transaction', case=False, regex=True
+        ).astype(int)
+        
+        self.df['is_cross_merchant'] = (self.df['merchant_frequency'] >= 3).astype(int)
+        
+        # SLA-based priority scoring (enterprise merchants get higher priority)
+        self.df['sla_tier'] = self.df['merchant_id'].apply(lambda x: 
+            'enterprise' if x in ['m_001', 'm_002', 'm_003'] else 'standard'
+        )
+        self.df['sla_priority'] = (self.df['sla_tier'] == 'enterprise').astype(int)
+        
+        # Text length features (needed for ML model)
         self.df['text_length'] = self.df['full_text'].str.len()
         self.df['word_count'] = self.df['full_text'].str.split().str.len()
         
@@ -110,67 +132,73 @@ class HybridTicketClassifier:
         return X_scaled, feature_columns
         
     def _create_ground_truth_labels(self):
-        """Create expert-rule based ground truth labels"""
+        """Create ground truth labels based on business logic and e-commerce migration patterns"""
         labels = []
         
         for _, row in self.df.iterrows():
             text = row['full_text'].lower()
-            priority = row['priority']
             
-            # Calculate feature scores for balanced classification
-            platform_score = 0
-            user_score = 0 
-            docs_score = 0
+            # Critical business logic: E-commerce migration-specific patterns
             
-            # Platform bug indicators
-            if any(code in text for code in ['500', '502', '503', '504']):
-                platform_score += 3
-            if any(word in text for word in ['database', 'connection pool', 'timeout', 'internal server']):
-                platform_score += 2
-            if priority == 'Critical' and row['merchant_frequency'] >= 3:
-                platform_score += 2
-            if 'outage' in text or 'system down' in text:
-                platform_score += 3
+            # 1. REVENUE-CRITICAL CORS ISSUES = PLATFORM BUG (not user error!)
+            # CORS on checkout/payment is revenue-affecting, likely platform CORS policy issue
+            if any(term in text for term in ['checkout', 'payment', 'cart', 'add to cart']) and 'cors' in text:
+                print(f"🎯 DEBUG: CORS + checkout found in ticket - should be platform_bug: {text[:100]}...")
+                labels.append('platform_bug')  # Revenue-affecting CORS = platform issue
                 
-            # User error indicators  
-            if any(code in text for code in ['400', '401', '403', '404']):
-                user_score += 2
-            if any(word in text for word in ['schema', 'validation', 'cors', 'preflight']):
-                user_score += 3
-            if any(word in text for word in ['api key', 'authentication', 'forbidden']):
-                user_score += 2
-            if 'failing' in text and any(word in text for word in ['script', 'request', 'payload']):
-                user_score += 2
+            # 2. PAYMENT WEBHOOK FAILURES = PLATFORM BUG (financial impact)
+            # Webhooks failing means money taken but orders not processed = critical platform issue
+            elif any(term in text for term in ['webhook', 'payment success', 'order created', 'orders stuck']) and any(code in text for code in ['404', '502', '504', 'timeout', 'gateway']):
+                labels.append('platform_bug')  # Payment webhooks failing = platform issue
                 
-            # Documentation gap indicators
-            if any(phrase in text for phrase in ['where is', 'where are', 'missing', 'outdated']):
-                docs_score += 3
-            if any(phrase in text for phrase in ['documentation', 'guide says', 'docs seem']):
-                docs_score += 2
-            if any(phrase in text for phrase in ['api keys', 'settings > general', 'hide']):
-                docs_score += 2
-            if 'worked fine yesterday' in text:
-                docs_score += 1
+            # 3. CROSS-MERCHANT ISSUES = PLATFORM REGRESSION
+            # Multiple merchants with same error = platform deployment issue
+            elif row['merchant_frequency'] >= 3 and any(code in text for code in ['500', '502', '503', '504']):
+                labels.append('platform_bug')  # Cross-merchant 5xx = platform issue
                 
-            # Classify based on highest score with thresholds
-            max_score = max(platform_score, user_score, docs_score)
-            
-            if max_score == 0:
-                # Default classification based on priority
-                if priority in ['Critical', 'High']:
-                    labels.append('platform_bug')
-                else:
-                    labels.append('user_error')
-            elif platform_score == max_score and platform_score >= 2:
+            # 4. SCHEMA MIGRATION ISSUES = USER ERROR (with context)
+            # Using old V1 fields in V2 API = merchant needs to update code
+            elif 'product_image' in text and any(term in text for term in ['v2', 'migration', 'breaking', 'additional properties', 'validation']):
+                labels.append('user_error')  # Using old fields = user needs to update
+                
+            # 5. PLATFORM HEALTH INDICATORS = PLATFORM BUG
+            # Database issues, connection pool exhaustion = infrastructure
+            elif any(term in text for term in ['database', 'connection pool', 'exhausted', 'internal server', 'system down']):
+                labels.append('platform_bug')  # Infrastructure issues
+                
+            # 6. AUTHENTICATION/CORS CONFIG = USER ERROR (single merchant)
+            # New domains need whitelisting, API key issues = user config
+            elif row['merchant_frequency'] <= 2 and any(term in text for term in ['unauthorized', 'forbidden', 'new domain', 'api key']):
+                labels.append('user_error')  # Configuration issues for single merchant
+                
+            # 7. MIGRATION DOCUMENTATION GAPS = DOCS GAP  
+            # Missing guidance for headless migration
+            elif any(phrase in text for phrase in ['how to migrate', 'where is', 'missing guide', 'outdated docs', 'worked fine yesterday']):
+                labels.append('docs_gap')  # Migration guidance missing
+                
+            # 8. ENTERPRISE MERCHANT PRIORITY ISSUES
+            # Enterprise merchants with high priority = likely platform issue
+            elif row['sla_tier'] == 'enterprise' and row['priority'] in ['Critical', 'High']:
+                labels.append('platform_bug')  # Enterprise issues get platform attention
+                
+            # 9. FALLBACK RULES BASED ON ERROR PATTERNS AND FREQUENCY
+            elif row['has_platform_errors'] and row['merchant_frequency'] >= 2:
+                labels.append('platform_bug')  # Platform errors across merchants
+            elif row['has_cors_errors'] and row['is_revenue_critical']:
+                labels.append('platform_bug')  # Revenue-critical CORS = platform
+            elif row['has_user_errors'] and row['merchant_frequency'] == 1:
+                labels.append('user_error')  # Single merchant user error patterns
+            elif row['has_schema_errors'] and 'migration' in text:
+                labels.append('user_error')  # Schema errors during migration = user needs to update
+                
+            # DEFAULT CLASSIFICATION
+            elif row['has_platform_errors']:
                 labels.append('platform_bug')
-            elif user_score == max_score and user_score >= 2:
+            elif row['has_user_errors']:
                 labels.append('user_error')
-            elif docs_score == max_score and docs_score >= 2:
-                labels.append('docs_gap')
             else:
-                # Tie-breaker: default to user error for low scores
-                labels.append('user_error')
-                    
+                labels.append('docs_gap')
+                
         return labels
 
     def run_clustering(self):
@@ -325,6 +353,14 @@ class HybridTicketClassifier:
         dominant_category = categories.index[0]
         category_dist = categories.to_dict()
         
+        # BUSINESS OVERRIDE: Revenue-critical platform bugs take precedence
+        platform_bugs = cluster_df[cluster_df['true_category'] == 'platform_bug']
+        revenue_critical_bugs = platform_bugs[platform_bugs['is_revenue_critical'] == 1]
+        
+        if len(revenue_critical_bugs) > 0:
+            print(f"🎯 BUSINESS OVERRIDE: Found {len(revenue_critical_bugs)} revenue-critical platform bugs in cluster")
+            dominant_category = 'platform_bug'  # Override clustering majority vote
+            
         # Confidence analysis
         avg_confidence = cluster_df['prediction_confidence'].mean()
         

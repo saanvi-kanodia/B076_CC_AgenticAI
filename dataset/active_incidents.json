@@ -3,7 +3,7 @@
     "incident_id": "INC-0",
     "status": "DETECTED",
     "ticket_count": 84,
-    "priority_level": "Medium",
+    "priority_level": "Critical",
     "affected_merchants": [
       "m_005",
       "m_012",
@@ -26,7 +26,7 @@
       "m_014",
       "m_020"
     ],
-    "summary": "84 user error incidents: API failing on product update",
+    "summary": "84 platform bug incidents: API failing on product update",
     "centroid": [
       -0.02262386679649353,
       -0.011824019253253937,
@@ -413,19 +413,19 @@
       -0.021267898380756378,
       0.013080541975796223
     ],
-    "ml_category": "user_error",
-    "category_confidence": 0.759,
+    "ml_category": "platform_bug",
+    "category_confidence": 0.926,
     "category_distribution": {
-      "user_error": 37,
-      "platform_bug": 29,
-      "docs_gap": 18
+      "docs_gap": 47,
+      "user_error": 19,
+      "platform_bug": 18
     },
     "error_patterns": [
-      "HTTP 404",
+      "HTTP 400",
+      "HTTP 429",
       "HTTP 500",
-      "Endpoint: nan",
       "HTTP nan",
-      "HTTP 429"
+      "Endpoint: nan"
     ],
     "technical_indicators": {
       "Error Codes": 26,
@@ -439,14 +439,14 @@
       {
         "subject": "API failing on product update",
         "body": "My script keeps failing on the `product_image` field. Did you change the API spec? It worked fine yesterday.",
-        "true_category": "user_error",
-        "prediction_confidence": 0.5524276539584485
+        "true_category": "docs_gap",
+        "prediction_confidence": 0.8901766557331483
       },
       {
         "subject": "Missing Orders in Backend",
         "body": "Customers are paying, but we don't see the orders in our ERP system. It seems the webhook isn't firing?",
         "true_category": "docs_gap",
-        "prediction_confidence": 0.8479735982455187
+        "prediction_confidence": 0.8378109965929873
       }
     ],
     "ticket_ids": [
@@ -554,7 +554,7 @@
       "m_020",
       "m_001"
     ],
-    "summary": "14 user error incidents: CORS error on checkout page",
+    "summary": "14 platform bug incidents: CORS error on checkout page",
     "centroid": [
       -0.024081379175186157,
       0.0029708114452660084,
@@ -941,16 +941,17 @@
       -0.002700311364606023,
       0.0300185177475214
     ],
-    "ml_category": "user_error",
-    "category_confidence": 0.858,
+    "ml_category": "platform_bug",
+    "category_confidence": 0.724,
     "category_distribution": {
-      "user_error": 12,
-      "platform_bug": 2
+      "user_error": 8,
+      "platform_bug": 5,
+      "docs_gap": 1
     },
     "error_patterns": [
       "HTTP nan",
-      "HTTP 403",
-      "Endpoint: nan"
+      "Endpoint: nan",
+      "HTTP 403"
     ],
     "technical_indicators": {
       "Error Codes": 1,
@@ -961,14 +962,14 @@
       {
         "subject": "CORS error on checkout page",
         "body": "We deployed our new headless frontend to Vercel today. Now, whenever we try to add to cart, the browser console turns red with a CORS error.",
-        "true_category": "user_error",
-        "prediction_confidence": 0.953856371101255
+        "true_category": "platform_bug",
+        "prediction_confidence": 0.9284473664605659
       },
       {
         "subject": "Access-Control-Allow-Origin missing",
         "body": "My developer says the API is blocking our new domain. Preflight OPTIONS request is failing.",
-        "true_category": "user_error",
-        "prediction_confidence": 0.5321212058811557
+        "true_category": "docs_gap",
+        "prediction_confidence": 0.519347023423466
       }
     ],
     "ticket_ids": [
