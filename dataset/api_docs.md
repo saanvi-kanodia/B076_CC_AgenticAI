@@ -659,3 +659,248 @@ If you see sustained 500 errors across multiple requests, check the Status Page.
 ---
 
 **NexusCommerce Developer Support** - copyright 2023
+
+
+---
+
+## 3.6 Webhooks → Debugging Webhook Failures
+
+Webhooks can fail silently if the receiving endpoint does not respond with a 2xx status within 10 s.  
+All retry attempts include the headers below so you can correlate retries with the original event.
+
+| Header | Value | Purpose |
+|---|---|---|
+| `X-Nexus-Event-Id` | `evt_7mg5k3d9q2zt` | Unique event UUID |
+| `X-Nexus-Retry-Count` | `0…9` | 0 = first attempt |
+| `X-Nexus-Signature` | `sha256=<hex>` | HMAC-SHA256 of raw body |
+
+### Common failure reasons
+
+| Symptom | Root cause | Fix |
+|---|---|---|
+| 403 / “token mismatch” | Secret not verified | Recalculate HMAC with your endpoint secret |
+| 404 | Path typo or staging URL | Check path and CORS origins |
+| 522 / 524 | Cloudflare timeout | Return 200 immediately, queue work |
+| `ssl_certificate_verified: false` | Self-signed cert | Whitelist your domain or use a valid cert |
+
+### Retry schedule
+
+Attempt # | Delay
+---|---
+0 | immediate
+1…3 | 30 s
+4…6 | 5 min
+7…9 | 30 min
+
+After 9 failures the webhook is marked `dead` and must be replayed manually from the dashboard.
+
+### Local testing with ngrok
+
+```bash
+ngrok http 4000
+# copy https url → Settings → Developers → Webhooks → Endpoint
+```
+
+Log snippet (trimmed):
+
+```
+2023-12-15T14:23:12Z  POST /webhooks 200  123ms  X-Nexus-Retry-Count:0
+2023-12-15T14:23:42Z  POST /webhooks 500  9.8s   X-Nexus-Retry-Count:1
+```
+
+---
+
+## 3.7 Rate Limits
+
+| Plan | Requests / 60 s | Burst | Concurrent |
+|---|---|---|---|
+| Sandbox | 1 000 | 100 | 10 |
+| Starter | 5 000 | 250 | 25 |
+| Growth | 20 000 | 1 000 | 100 |
+| Enterprise | ∞* | ∞* | ∞* |
+*Enterprise limits are contractual; contact CSM for details.
+
+### Headers returned on every request
+
+Header | Example | Meaning
+---|---|---
+`X-RateLimit-Limit` | 5000 | Quota per window
+`X-RateLimit-Remaining` | 4321 | Requests left
+`X-RateLimit-Reset` | 1702656000 | Unix timestamp when window resets
+`X-RateLimit-Retry-After` | 42 | Seconds to wait (only on 429)
+
+### 429 response example
+
+```http
+HTTP/1.1 429 Too Many Requests
+Content-Type: application/json
+X-RateLimit-Retry-After: 42
+
+{
+  "error": "rate_limit_exceeded",
+  "message": "Quota exhausted. Retry after 42 seconds.",
+  "retry_after": 42
+}
+```
+
+### Best-practice retry snippet (JavaScript)
+
+```js
+const MAX_RETRIES = 5;
+async function nexusFetch(url, options, attempt = 0) {
+  const res = await fetch(url, options);
+  if (res.status === 429 && attempt < MAX_RETRIES) {
+    const retryAfter = res.headers.get('X-RateLimit-Retry-After') || 60;
+    await new Promise(r => setTimeout(r, retryAfter * 1000));
+    return nexusFetch(url, options, attempt + 1);
+  }
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+```
+
+---
+
+## 4.3 Orders → Retrieving Historical Orders
+
+**Endpoint:** `GET /api/v2/orders/history`
+
+Query parameters:
+
+| Param | Type | Default | Description |
+|---|---|---|---|
+| `from` | ISO-8601 | (now - 90 d) | Start date (inclusive) |
+| `to` | ISO-8601 | now | End date (inclusive) |
+| `status` | string | any | Filter: `paid`, `fulfilled`, `cancelled` |
+| `limit` | integer | 50 | Max 250 |
+| `cursor` | string | — | Pagination token from `next_cursor` |
+
+### Request
+
+```http
+GET /api/v2/orders/history?from=2023-10-01T00:00:00Z&to=2023-10-31T23:59:59Z&status=paid&limit=100
+Authorization: Bearer <token>
+```
+
+### Response
+
+```json
+{
+  "data": [ …orders… ],
+  "has_more": true,
+  "next_cursor": "eyJwIjoiMjAyMy0xMC0xNS0xMi0zMCIsImlkIjo5OTl9"
+}
+```
+
+Use `next_cursor` in the subsequent request:
+
+```
+GET /api/v2/orders/history?cursor=eyJwIjoiMjAyMy0xMC0xNS0xMi0zMCIsImlkIjo5OTl9
+```
+
+**Note:** History is immutable; edits create new versions. Deleted orders remain with `status: archived`.
+
+---
+
+## 5.2 Media Upload → Image URL Requirements
+
+Instead of uploading binaries you may pass publicly reachable URLs. The system will fetch and cache them.
+
+### Accepted domains
+
+- `https://images.unsplash.com`
+- `https://cdn.example.com`
+- `https://*.s3.amazonaws.com`
+- `https://*.blob.core.windows.net`
+- Any domain whitelisted in **Settings → Security → Media Origins**
+
+### Technical rules
+
+Rule | Value
+---|---
+Max file size | 10 MB
+Min resolution | 250 × 250 px
+Max resolution | 4096 × 4096 px
+Formats | jpg, png, webp, gif (first frame)
+Timeout | 8 s connect, 30 s transfer
+User-Agent | `NexusCommerce-Bot/2.4.0`
+
+### CORS-proxy for localhost
+
+If your images live on `localhost`, tunnel them through ngrok or use the built-in proxy:
+
+```json
+"images": ["https://api.nexuscommerce.com/v2/media/proxy?url=http%3A%2F%2Flocalhost%3A3001%2Fshirt.jpg"]
+```
+
+The proxy adds the correct `Content-Type` and caches the file for 24 h.
+
+### Validation error example
+
+```json
+{
+  "error": "invalid_image_url",
+  "message": "URL https://evil.com/pic.jpg is not whitelisted."
+}
+```
+
+---
+
+## 6. Migration Guide
+
+### Pre-flight checklist
+
+- [ ] Back-up current store data (Settings → Backups → Export)
+- [ ] Generate new V2 token (old V1 tokens are not forward-compatible)
+- [ ] Review breaking changes (see diff sheet)
+- [ ] Whitelist new staging domain in CORS
+- [ ] Update SDK to `^2.4.0`
+- [ ] Run migration validator script (provided below)
+
+### Validator script (Node 18+)
+
+```bash
+npx @nexuscommerce/migrate-validator \
+  --apiKey=YOUR_V2_TOKEN \
+  --storeId=12345 \
+  --dryRun
+```
+
+Output:
+
+```
+✓ Products 1 234
+✓ Collections 89
+✓ Orders 45 678
+⚠ Webhooks 12 (manual review needed)
+```
+
+### Rolling release steps
+
+1. Deploy new storefront to staging
+2. Switch staging webhook endpoint to V2
+3. Run end-to-end checkout tests
+4. Point DNS to new origin (low-TTL)
+5. Monitor dashboard for 30 min
+
+### Rollback plan
+
+If critical issues appear within 2 h of cut-over:
+
+1. Revert DNS to previous origin
+2. Re-enable V1 webhooks (they remain active for 48 h)
+3. Restore last backup (Settings → Backups → Restore)
+4. Open support ticket with subject “URGENT-ROLLBACK” for audit
+
+### Post-migration validation
+
+Run the following API calls and assert the listed status codes:
+
+Endpoint | Expected | Meaning
+---|---|---
+`GET /api/v2/products?limit=1` | 200 | Core reachable
+`POST /api/v2/orders` | 201 | Checkout writable
+`GET /api/v2/orders/history` | 200 | History migrated
+`GET /api/v2/webhooks` | 200 | Webhooks intact
+
+When all checks pass, delete legacy V1 token from dashboard to prevent accidental usage.
