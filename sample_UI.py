@@ -139,6 +139,25 @@ with st.sidebar:
     # Documentation Viewer Button
     if st.button("📚 Open Documentation Viewer", use_container_width=True):
         st.session_state['show_docs'] = True
+    
+    # Documentation PR Button
+    if st.button("🚀 Auto-Update Docs (Create PR)", use_container_width=True):
+        from docs_pr_automation import DocumentationPRAgent
+        
+        with st.spinner("Analyzing documentation gaps..."):
+            try:
+                agent = DocumentationPRAgent()
+                result = agent.run_full_workflow()
+                
+                if result and result['status'] == 'success':
+                    st.success(f"✅ PR Created! #{result['pr_number']}")
+                    st.markdown(f"[View PR]({result['pr_url']})")
+                elif result and result['status'] == 'simulated':
+                    st.info("📋 Simulated - Add GITHUB_TOKEN to .env")
+                else:
+                    st.warning("No documentation gaps found or already up to date")
+            except Exception as e:
+                st.error(f"Error: {str(e)}")
 
     # Mode selection
     mode = st.selectbox(
@@ -692,24 +711,41 @@ elif mode == "Agent Investigation":
 
 elif mode == "Full Pipeline":
     st.markdown('### Full Agentic Pipeline')
-    st.markdown("End-to-End: Ticket Clustering → Incident Detection → Multi-Agent Investigation")
-    if st.button("Run Complete Pipeline", type="primary", use_container_width=True):
-        from agent_tools import run_ticket_clustering
-        from agent_graph import run_agent_on_incident
-        progress = st.progress(0)
-        status = st.empty()
-        # Step 1: Clustering
-        status.write("Step 1: ML-Powered Clustering")
-        incidents = run_ticket_clustering.invoke({})
-        progress.progress(40)
-        # Step 2: Investigation (run on first incident for demo)
-        status.write("Step 2: Multi-Agent Investigation")
-        investigation_result = None
-        if incidents:
-            investigation_result = run_agent_on_incident(incidents[0])
-        progress.progress(100)
-        status.write("Pipeline Complete!")
-        st.markdown('### 📈 Pipeline Results Summary')
+    st.markdown("End-to-End: Ticket Clustering → Incident Detection → Multi-Agent Investigation → Documentation Update")
+    
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        if st.button("Run Complete Pipeline", type="primary", use_container_width=True):
+            from agent_tools import run_ticket_clustering
+            from agent_graph import run_agent_on_incident
+            from docs_pr_automation import DocumentationPRAgent
+            
+            progress = st.progress(0)
+            status = st.empty()
+            
+            # Step 1: Clustering
+            status.write("Step 1/3: ML-Powered Clustering")
+            incidents = run_ticket_clustering.invoke({})
+            progress.progress(33)
+            
+            # Step 2: Investigation (run on first incident for demo)
+            status.write("Step 2/3: Multi-Agent Investigation")
+            investigation_result = None
+            if incidents:
+                investigation_result = run_agent_on_incident(incidents[0])
+            progress.progress(66)
+            
+            # Step 3: Documentation Update
+            status.write("Step 3/3: Analyzing Documentation Gaps")
+            try:
+                docs_agent = DocumentationPRAgent()
+                docs_result = docs_agent.run_full_workflow()
+            except Exception as e:
+                docs_result = {'status': 'error', 'error': str(e)}
+            progress.progress(100)
+            
+            status.write("✅ Pipeline Complete!")
+            st.markdown('### 📈 Pipeline Results Summary')
         
         if incidents:
             st.markdown("#### 🎯 Detected Incident")
@@ -795,10 +831,24 @@ elif mode == "Full Pipeline":
                 else:
                     st.markdown("**Status:** 🚨 Escalated to human support")
             
+            # Documentation Update Results
+            if docs_result:
+                st.markdown("#### 📚 Documentation Update")
+                if docs_result.get('status') == 'success':
+                    st.success(f"✅ Documentation PR Created: #{docs_result.get('pr_number')}")
+                    st.markdown(f"[View PR on GitHub]({docs_result.get('pr_url')})")
+                elif docs_result.get('status') == 'simulated':
+                    st.info("📋 Documentation gaps identified (simulation mode)")
+                else:
+                    st.warning("No significant documentation gaps found")
+            
             with st.expander("🔍 Complete Pipeline Output", expanded=False):
                 st.markdown("**Clustering Result:**")
                 if incidents:
                     st.json(incidents[0])
                 st.markdown("**Investigation Result:**")
                 st.json(investigation_result)
+                if docs_result:
+                    st.markdown("**Documentation Update Result:**")
+                    st.json(docs_result)
 

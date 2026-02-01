@@ -5,3 +5,6 @@ pandas
 scikit-learn
 sentence-transformers
 torch
+PyGithub
+python-dotenv
+langchain-groq

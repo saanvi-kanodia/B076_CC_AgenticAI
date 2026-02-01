@@ -51,6 +51,16 @@ This system provides autonomous support incident detection, classification, and 
 - **Professional Formatting**: Incident references, timestamps, and support signatures
 - **Demo Mode**: Safe testing without actual email delivery
 
+### 🤖 Self-Updating Documentation ()
+
+- **Automated PR Creation**: Analyzes incident patterns and creates GitHub PRs to update api_docs.md
+- **Gap Detection**: AI identifies what's missing or unclear in documentation
+- **Smart Improvements**: Generates new sections based on common support issues
+- **GitHub Integration**: Automatically creates branches, commits, and pull requests
+- **One-Click Workflow**: Available in UI sidebar and Full Pipeline mode
+- **Professional Formatting**: Incident references, timestamps, and support signatures
+- **Demo Mode**: Safe testing without actual email delivery
+
 ### ✏️ Response Editing & Review
 
 - **Edit Button**: Modify AI-generated responses before sending
@@ -100,13 +110,6 @@ cd B076_CC_AgenticAI
 # Install dependencies
 pip install -r requirements.txt
 
-# Configure environment variables
-cat > .env << EOF
-GROQ_API_KEY=your_groq_api_key_here
-SUPPORT_EMAIL=your_email@gmail.com
-SUPPORT_EMAIL_PASSWORD=your_gmail_app_password
-EOF
-
 # Run ML training and clustering
 python models.py
 
@@ -124,15 +127,6 @@ streamlit run docs_viewer.py
 - `GROQ_API_KEY` - Get from [Groq Console](https://console.groq.com/)
 - `SUPPORT_EMAIL` - Gmail address for sending notifications
 - `SUPPORT_EMAIL_PASSWORD` - Gmail App Password (not regular password)
-
-**Gmail App Password Setup:**
-
-1. Enable 2-Factor Authentication on your Google Account
-2. Go to Security → App Passwords
-3. Generate password for "Mail"
-4. Use the 16-character password in `.env`
-
-See `EMAIL_SETUP.md` for detailed email configuration.
 
 ## Usage
 
