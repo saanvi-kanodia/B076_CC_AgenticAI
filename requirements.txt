@@ -1,0 +1,7 @@
+streamlit
+langchain-core
+numpy
+pandas
+scikit-learn
+sentence-transformers
+torch

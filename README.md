@@ -1,4 +1,4 @@
-# Agentic AI Support System for E-commerce Migration: Helix
+# Agentic AI Support System for E-commerce Migration
 
 **Advanced incident detection and resolution using hybrid machine learning and multi-agent orchestration**
 
