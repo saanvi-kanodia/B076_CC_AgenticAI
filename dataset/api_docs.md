@@ -659,3 +659,267 @@ If you see sustained 500 errors across multiple requests, check the Status Page.
 ---
 
 **NexusCommerce Developer Support** - copyright 2023
+
+
+---
+
+## 4. Webhooks, Limits & Migration Survival Guide
+
+> This section closes the most common support tickets we see today. Read it before going live.
+
+---
+
+### 4.1 Webhook Failure Troubleshooting
+
+Every webhook we send contains:
+
+| Header | Example | Purpose |
+|--------|---------|---------|
+| `X-Nexus-Signature` | `sha256=3d8ab...` | HMAC-SHA256 of raw body using your *signing secret* |
+| `X-Nexus-Event` | `order.paid` | Event type |
+| `X-Nexus-Delivery` | `5c7b9...` | UUID for this attempt |
+
+#### Reading the Logs
+
+1. Open **Settings → Developers → Webhook Logs** (filter by event or delivery ID).
+2. Status meanings:
+   - `2xx` – we consider it delivered
+   - `3xx/4xx/5xx` – we **retry** with exponential backoff for 24 h (max 12 attempts)
+3. Click any row to see:
+   - Full request/response body
+   - Retry schedule
+   - Final error (if we gave up)
+
+#### Local Testing
+
+Expose your localhost via **HTTPS** (ngrok, Cloudflare Tunnel, etc.) and add the tunnel URL to **Settings → Developers → Webhooks**. Plain `http://localhost` is **never delivered**—our signer refuses insecure schemes.
+
+#### Signature Validation (Node.js)
+
+```js
+import crypto from 'crypto';
+const SIGNING_SECRET = process.env.NEXUS_SIGNING_SECRET; // from dashboard
+
+function isValidNexusWebhook(body, signature) {
+  const expected = `sha256=${crypto
+    .createHmac('sha256', SIGNING_SECRET)
+    .update(body, 'utf8')
+    .digest('hex')}`;
+  return crypto.timingSafeEqual(
+    Buffer.from(signature),
+    Buffer.from(expected)
+  );
+}
+```
+
+Return `200` **only after** your idempotency check passes; anything else triggers a retry.
+
+---
+
+### 4.2 Rate-Limiting & 429 Handling
+
+| Plan | Window | Max Requests |
+|------|--------|--------------|
+| Sandbox | 1 min | 120 |
+| Starter | 1 min | 300 |
+| Growth | 1 min | 1 000 |
+| Enterprise | custom | custom |
+
+We return headers on every call:
+
+```http
+X-RateLimit-Limit: 300
+X-RateLimit-Remaining: 298
+X-RateLimit-Reset: 1703845200
+```
+
+#### 429 Response Example
+
+```json
+{
+  "error": "Too Many Requests",
+  "message": "Quota exceeded. Retry after 2024-12-29 12:30:00 UTC.",
+  "retry_after_seconds": 45
+}
+```
+
+#### Retry Logic (Python)
+
+```python
+import time, requests, os
+
+def nexus_get(path):
+    url = f"https://api.nexuscommerce.com/v2{path}"
+    hdr = {"Authorization": f"Bearer {os.getenv('TOKEN')}"}
+    while True:
+        r = requests.get(url, headers=hdr)
+        if r.status_code == 429:
+            wait = int(r.headers.get("retry-after", 60))
+            time.sleep(wait)
+            continue
+        r.raise_for_status()
+        return r.json()
+```
+
+---
+
+### 4.3 Finding & Managing API Keys (2024 UI)
+
+1. Login → **Developers** (top nav, *not* Settings) → **API Keys**
+2. Choose the environment tab (Sandbox | Production)
+3. **Service-Account Token** (server-only, no expiry) vs **User Token** (expires after 90 days)
+4. Copy the key **once**—we store only the last 4 chars
+
+> If you still see `Settings → General → API Keys`, hard-refresh your browser; you are on UI < 2.3.
+
+---
+
+### 4.4 Image URL Rules & CDN CORS
+
+We **reject** image URLs that:
+
+- Exceed 10 MB
+- Return > 5 s TTFB
+• Lack `Content-Length` or `Content-Type` headers
+• Are served from origins that block our CDN edge IPs (AWS CloudFront)
+
+#### Accepted Formats
+
+`jpg`, `jpeg`, `png`, `webp`, `gif`, `svg` (max 1 MB for SVG)
+
+#### Signed-URL Example (AWS S3)
+
+```bash
+aws s3 presign s3://my-bucket/product.jpg --expires-in 3600
+```
+
+Add a CORS rule to your bucket so our CDN can hot-link:
+
+```json
+[
+  {
+    "AllowedHeaders": ["*"],
+    "AllowedMethods": ["GET", "HEAD"],
+    "AllowedOrigins": ["https://cdn.nexuscommerce.com"],
+    "MaxAgeSeconds": 3000
+  }
+]
+```
+
+---
+
+### 4.5 CORS for Localhost HTTPS
+
+Wildcard (`*`) **does not** allow credentials; you must list every origin.
+
+For `https://localhost:3000`:
+
+1. **Settings → Security → CORS Origins → Add Origin**
+   - Enter exactly: `https://localhost:3000`
+2. Enable **Allow credentials**
+3. Restart your local dev server; Chrome may cache the failed pre-flight for 5 min
+
+#### Quick Pre-flight Debug (cURL)
+
+```bash
+curl -X OPTIONS \
+  -H "Origin: https://localhost:3000" \
+  -H "Access-Control-Request-Method: POST" \
+  -H "Access-Control-Request-Headers: authorization,content-type" \
+  https://api.nexuscommerce.com/v2/products
+```
+
+Expected response headers:
+
+```
+Access-Control-Allow-Origin: https://localhost:3000
+Access-Control-Allow-Methods: GET, POST, PUT, DELETE
+Access-Control-Allow-Headers: authorization,content-type
+Access-Control-Allow-Credentials: true
+```
+
+---
+
+### 4.6 Migration Checklist & Rollback
+
+Use this list when moving from V1 to V2 or between environments.
+
+#### Pre-flight Checks
+
+- [ ] Export **order history** (V1 → `/v1/orders?limit=250&page=…`)—we keep it 90 days after sunset
+- [ ] Note your **current webhook endpoints**; V2 signatures differ
+- [ ] Verify **CORS** and **rate-limit** tiers match new plan
+- [ ] Rotate **API keys**; V1 keys do **not** work on V2
+- [ ] Update SDKs to latest (`@nexuscommerce/js-sdk ≥ 3.0`)
+
+#### Rollback Commands
+
+If something breaks < 30 min after cut-over:
+
+```bash
+# 1. Point DNS back to V1 IP (if you proxy through Cloudflare)
+# 2. Re-enable V1 webhooks (Dashboard → Developers → Webhooks → "Re-activate V1")
+# 3. Re-issue V1-compatible tokens (Dashboard → Developers → API Keys → Legacy Tokens)
+```
+
+> We keep V1 infrastructure warm for 48 h after your confirmed migration; after that, rollback requires support ticket.
+
+---
+
+### 4.7 Order-History Retention & Pagination
+
+- **Retention:** 7 years (unchanged from V1)
+- **Max page size:** 250 rows
+- **Cursor window:** 90 days
+
+#### Example: Fetch All Orders Since Last Month
+
+```http
+GET /v2/orders?created[gte]=2024-11-01T00:00:00Z&limit=250&sort=created:asc
+Headers: Accept-Version: 2.4.0
+```
+
+Response:
+
+```json
+{
+  "data": [ … ],
+  "pagination": {
+    "next_cursor": "eyJjcmVhdGVkIjoiMjAyNC0xMi0wMSIsImlkIjoiODk5OSJ9",
+    "has_more": true
+  }
+}
+```
+
+Use `next_cursor` as `?cursor=<value>` until `has_more=false`.
+
+---
+
+### 4.8 Product-Update Idempotency
+
+`PATCH /products/{id}` accepts an **Idempotency-Key** header (max 64 chars). Re-play the same key within 24 h to guarantee **exactly-once** application and receive the same response body.
+
+#### 500 Retry Logic
+
+If you hit an unexplained 500, **back-off** with jitter:
+
+```python
+import random, time, httpx
+
+def safe_patch(url, json, headers, max_retries=3):
+    for attempt in range(1, max_retries + 1):
+        r = httpx.patch(url, json=json, headers=headers)
+        if r.status_code == 500:
+            time.sleep(random.uniform(2 ** attempt, 2 ** attempt + 1))
+            continue
+        r.raise_for_status()
+        return r
+```
+
+---
+
+Still stuck? Open a ticket and attach:
+
+- `X-Nexus-Delivery` (for webhooks)
+- Full request/response (cURL -v)
+- Timestamp + timezone
