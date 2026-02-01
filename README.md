@@ -51,15 +51,20 @@ This system provides autonomous support incident detection, classification, and 
 - **Professional Formatting**: Incident references, timestamps, and support signatures
 - **Demo Mode**: Safe testing without actual email delivery
 
-### 🤖 Self-Updating Documentation ()
+### 🤖 Self-Updating Documentation (Autonomous + Manual)
 
 - **Automated PR Creation**: Analyzes incident patterns and creates GitHub PRs to update api_docs.md
+- **Autonomous Agent Integration**: Responder agent automatically creates PRs when documentation gaps detected
+- **Smart Triggers**:
+  - Documentation gap diagnosis (docs_gap ≥ 30%)
+  - Cross-merchant patterns (≥3 merchants, confidence < 80%)
 - **Gap Detection**: AI identifies what's missing or unclear in documentation
 - **Smart Improvements**: Generates new sections based on common support issues
 - **GitHub Integration**: Automatically creates branches, commits, and pull requests
-- **One-Click Workflow**: Available in UI sidebar and Full Pipeline mode
-- **Professional Formatting**: Incident references, timestamps, and support signatures
-- **Demo Mode**: Safe testing without actual email delivery
+- **Dual Access**:
+  - Manual: UI sidebar button "🤖 Create Documentation PR"
+  - Automatic: Agent decides during investigation workflow
+- **No Human Intervention Needed**: Self-improving documentation loop
 
 ### ✏️ Response Editing & Review
 

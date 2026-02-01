@@ -276,3 +276,58 @@ def get_pr_context(pr_title: str, pr_description: str):
         context["type"] = "refactor"
     
     return context
+
+
+@tool
+def create_documentation_pr(incident_summary: str, gap_reasoning: str):
+    """
+    Creates a GitHub PR to update api_docs.md based on incident patterns.
+    Use this when investigation reveals documentation gaps causing support issues.
+    
+    Args:
+        incident_summary: Summary of the incident pattern
+        gap_reasoning: Explanation of what's missing in documentation
+    
+    Returns:
+        PR creation status and URL
+    """
+    print(f"   📚 TOOL: Creating documentation PR...")
+    
+    try:
+        from docs_pr_automation import DocumentationPRAgent
+        
+        agent = DocumentationPRAgent()
+        
+        # Create custom gap analysis from agent's findings
+        gap_analysis = {
+            'gaps_found': True,
+            'gap_count': 1,
+            'critical_gaps': [incident_summary],
+            'suggested_additions': ['Clarify based on incident pattern'],
+            'priority': 'high',
+            'reasoning': gap_reasoning
+        }
+        
+        # Generate improvements
+        improvements = agent.generate_documentation_improvements(gap_analysis)
+        
+        if not improvements:
+            return {
+                'status': 'no_improvements',
+                'message': 'Could not generate documentation improvements'
+            }
+        
+        # Create PR
+        result = agent.create_pr_for_docs_update(
+            improvements=improvements,
+            gap_analysis=gap_analysis
+        )
+        
+        return result
+        
+    except Exception as e:
+        return {
+            'status': 'error',
+            'error': str(e),
+            'message': 'Failed to create documentation PR'
+        }

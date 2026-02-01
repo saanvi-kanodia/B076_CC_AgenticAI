@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from langgraph.graph import StateGraph, END
 from langchain_core.prompts import ChatPromptTemplate
-from agent_tools import fetch_merchant_logs, search_documentation, check_platform_health
+from agent_tools import fetch_merchant_logs, search_documentation, check_platform_health, create_documentation_pr
 from pr_agent import process_pr_task, PRAnalysisRequest
 from typing import TypedDict, List, Optional
 
@@ -225,8 +225,46 @@ Respond with ONLY valid JSON. Use ML insights as your primary evidence source.""
     }
 
 def node_responder(state: AgentState):
-    """The Writer: Drafts the action"""
+    """The Writer: Drafts the action and may trigger documentation updates"""
     print("✍️ RESPONDER: Drafting response...")
+    
+    # Check if this is a documentation gap that needs PR
+    root_cause = state.get('root_cause_analysis', '')
+    confidence = state.get('confidence_score', 0.0)
+    symptom = state.get('symptom_description', '')
+    
+    # Decision logic for documentation PR
+    should_create_pr = False
+    gap_reasoning = ""
+    
+    try:
+        import json
+        if isinstance(root_cause, str) and root_cause.strip().startswith('{'):
+            parsed = json.loads(root_cause)
+            diagnosis = parsed.get('diagnosis', '').lower()
+            docs_gap_prob = parsed.get('probabilities', {}).get('docs_gap', 0)
+            
+            # Trigger PR if documentation gap detected or if multiple merchants affected by similar issue
+            if diagnosis == 'docs_gap' or docs_gap_prob >= 30:
+                should_create_pr = True
+                gap_reasoning = f"Diagnosis: {diagnosis}, Docs gap probability: {docs_gap_prob}%, Evidence: {parsed.get('evidence', [])}"
+            elif len(state.get('affected_merchants', [])) >= 3 and confidence < 0.8:
+                should_create_pr = True
+                gap_reasoning = f"Cross-merchant pattern detected ({len(state['affected_merchants'])} merchants) with low confidence ({confidence:.1%}), suggesting documentation improvements needed"
+    except Exception as e:
+        print(f"⚠️ Could not parse root cause for PR decision: {e}")
+    
+    # Create PR if documentation gap identified
+    if should_create_pr:
+        print("📝 RESPONDER: Documentation gap detected, creating PR...")
+        try:
+            pr_result = create_documentation_pr.invoke({
+                "incident_summary": f"Incident: {symptom}\nAffected Merchants: {len(state.get('affected_merchants', []))}\nRoot Cause: {root_cause[:500]}",
+                "gap_reasoning": gap_reasoning
+            })
+            print(f"✅ PR Creation Result: {pr_result}")
+        except Exception as e:
+            print(f"⚠️ Failed to create documentation PR: {e}")
     
     prompt = f"""
     Based on the diagnosis: "{state.get('root_cause_analysis', '')}"
