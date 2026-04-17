@@ -659,3 +659,202 @@ If you see sustained 500 errors across multiple requests, check the Status Page.
 ---
 
 **NexusCommerce Developer Support** - copyright 2023
+
+
+---
+
+## 4. Webhooks, Throttling & Migration Essentials
+
+> These topics generate the majority of support tickets. Read this section **before** going live.
+
+---
+
+### 4.1 Webhook Failure Handling & Retry Policy
+
+NexusCommerce signs every webhook and retries failed deliveries for **48 h** using **exponential back-off** (1 s → 2 s → 4 s … → 30 min).  
+After 48 h the attempt is **permanently dropped** and must be re-triggered manually.
+
+#### Required Receiver Behaviour
+1. Return `200 OK` **within 5 s**  
+2. Persist the `X-Nexus-Signature-256` header for audit  
+3. Support **idempotency** via the `event_id` field (UUID)
+
+#### Verifying the Signature (pseudo-code)
+```python
+import hmac, hashlib, base64
+
+secret   = b'your_webhook_secret'          # from Settings → Developers → Webhooks
+payload  = request.body                      # raw UTF-8 bytes
+received = request.headers['X-Nexus-Signature-256'].replace('sha256=','')
+expected = hmac.new(secret, payload, hashlib.sha256).hexdigest()
+
+if not hmac.compare_digest(expected, received):
+    raise ValueError('Invalid signature')
+```
+
+#### Retry Payload Example
+Headers on every retry stay identical; only `X-Nexus-Attempt-Count` increments.
+
+```http
+POST /webhooks/nexus HTTP/1.1
+X-Nexus-Event: order.updated
+X-Nexus-Attempt-Count: 3
+X-Nexus-Signature-256: sha256=2f7c5...
+Content-Type: application/json
+
+{
+  "event_id": "a1b2c3d4-e5f6...",
+  "data": { "order_id": "ord_123", "status": "paid" }
+}
+```
+
+#### Quick Troubleshooting Table
+| Symptom in dashboard | Most common fix |
+|---------------------|-----------------|
+| “SSL certificate verify failed” | Add the **root CA** to your server or use **Let’s Encrypt** |
+| “Response timeout” | Increase server timeout or return `200` immediately and queue work |
+| “Signature mismatch” | Ensure **raw body** is used, not parsed JSON |
+
+---
+
+### 4.2 Rate-Limit & Throttling
+
+| Plan | Requests / 60 s | Concurrent | Headers returned |
+|------|----------------|------------|------------------|
+| Sandbox | 300 | 5 | `X-RateLimit-*` |
+| Starter | 1 000 | 10 | `X-RateLimit-*` |
+| Growth | 5 000 | 20 | `X-RateLimit-*` |
+| Enterprise | Custom | Custom | `X-RateLimit-*` |
+
+#### Headers You Should Log
+```http
+X-RateLimit-Limit: 1000
+X-RateLimit-Remaining: 42
+X-RateLimit-Reset: 1703841600   # Unix seconds
+```
+
+#### 429 Response Example
+```http
+HTTP/1.1 429 Too Many Requests
+X-RateLimit-Reset: 1703841600
+Retry-After: 37
+
+{
+  "error": "RATE_LIMIT_EXCEEDED",
+  "message": "Quota exhausted. Retry after 37 seconds."
+}
+```
+
+#### Back-off Strategy (TypeScript)
+```typescript
+const sleep = (s: number) => new Promise(r => setTimeout(r, s*1000));
+for (let attempt = 1; ; attempt++) {
+  try {
+    const {status, headers} = await callApi();
+    if (status !== 429) return;
+    const retryAfter = headers['retry-after'] ?? Math.min(60, 2**attempt);
+    await sleep(retryAfter);
+  } catch (e) { handle(e); }
+}
+```
+
+---
+
+### 4.3 Locating API Keys in the New UI
+1. Login → **⚙ Settings** (left sidebar)  
+2. Click **Developers** → **API Tokens**  
+3. Choose environment (Production / Staging)  
+4. Press **Create New Token** → copy the key (shown **once**)
+
+> 🔍 **Tip:** Use the search bar inside Settings and type “API” to jump here in one click.
+
+---
+
+### 4.4 Migration Checklist & Rollback
+
+Use this list when moving from V1 to V2.
+
+#### Pre-flight (do this **1 week** before)
+- [ ] Export V1 product dump (`GET /v1/products?limit=9999`)  
+- [ ] Validate image URLs (see §4.5)  
+- [ ] Whitelist new staging domain in CORS  
+- [ ] Update SDK to `nexus-js@^2.4`  
+
+#### Day of Cut-over
+1. Enable **maintenance** page  
+2. Switch base URL: `api.nexuscommerce.com/v1` → `/v2`  
+3. Run migration script (auto-maps fields):  
+   ```bash
+   npx nexus-migrate \
+     --from-key $V1_KEY \
+     --to-key $V2_KEY \
+     --products products.json \
+     --orders orders.json
+   ```
+4. Verify **webhook end-to-end** (place a 1 € test order)  
+5. Disable maintenance page
+
+#### Rollback (if needed)
+```bash
+npx nexus-migrate rollback \
+  --to-key $V1_KEY \
+  --restore-point 2023-12-15T09-00-00
+```
+Max rollback window: **72 h** (after this, V1 data is purged)
+
+---
+
+### 4.5 Image Upload Requirements & CORS
+- **Formats:** jpg, png, webp, gif (animated accepted)  
+- **Max size:** 10 MB per file, 50 MB per product (all images combined)  
+- **Min. resolution:** 500 × 500 px  
+- **Max. resolution:** 10 000 × 10 000 px  
+
+#### Signed-URL Flow (recommended)
+1. `POST /v2/media/upload-url`  
+   ```json
+   { "content_type": "image/png", "file_name": "shoe.png" }
+   ```
+2. Receive:
+   ```json
+   {
+     "upload_url": "https://upload.nexuscommerce.com/...",
+     "media_id": "med_ABC123"
+   }
+   ```
+3. Upload directly from browser (CORS already allowed for this host)  
+4. Attach `media_id` to product create/update call
+
+#### CORS Origin Setup for Uploads
+Add the **exact** origin you upload **from** (not the landing page):
+```
+https://app.mystore.com
+https://localhost:3000
+```
+Do **not** include a trailing slash.
+
+#### Cross-Origin Errors Quick-Diagnosis
+| Browser message | Root cause | Fix |
+|----------------|------------|-----|
+| `CORS header ‘Access-Control-Allow-Origin’ missing` | Domain not whitelisted | Add to Settings → Security → CORS Origins |
+| `CSP blocks ‘connect-src’` | Content-Security-Policy too strict | Add `upload.nexuscommerce.com` to `connect-src` |
+| `Mixed-content: load all resources via HTTPS` | HTTP used on HTTPS page | Change image URL to `https://` |
+
+---
+
+### 4.6 Health-Check & Status Page
+- **Status page:** [https://status.nexuscommerce.com](https://status.nexuscommerce.com)  
+- **Health endpoint:** `GET /v2/health`  
+  Response:
+  ```json
+  {
+    "status": "ok",
+    "version": "2.4.0",
+    "services": {
+      "api": "pass",
+      "database": "pass",
+      "cdn": "pass"
+    }
+  }
+  ```
+  If any value is `"fail"` the platform is degraded; retry with back-off.
