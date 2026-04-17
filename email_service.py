@@ -10,24 +10,20 @@ from datetime import datetime
 MERCHANT_EMAIL_DB = {
     'm_001': 'saanvikanodia05@gmail.com',
     'm_002': 'anushkabatte.college@gmail.com',
-    'm_003': 'nairsiddhanths@gmail.com',
-    'm_004': 'anushkabatte.college@gmail.com',
-    'm_005': 'saanvikanodia05@gmail.com',
-    'm_006': 'anushkabatte.college@gmail.com',
-    'm_007': 'saanvikanodia05@gmail.com',
-    'm_008': 'anushkabatte.college@gmail.com',
+    'm_003': 'anushkabatte.college@gmail.com',
+    'm_004': 'saanvikanodia05@gmail.com',
+    'm_005': 'anushkabatte.college@gmail.com',
+    'm_006': 'saanvikanodia05@gmail.com',
+    'm_007': 'anushkabatte.college@gmail.com',
+    'm_008': 'saanvikanodia05@gmail.com',
     'm_009': 'saanvikanodia05@gmail.com',
-    'm_010': 'nairsiddhanths@gmail.com',
+    'm_010': 'anushkabatte.college@gmail.com',
     'm_011': 'saanvikanodia05@gmail.com',
-    'm_012': 'anushkabatte.college@gmail.com',
-    'm_013': 'saanvikanodia05@gmail.com',
-    'm_014': 'nairsiddhanths@gmail.com',
+    'm_012': 'saanvikanodia05@gmail.com',
+    'm_013': 'anushkabatte.college@gmail.com',
+    'm_014': 'saanvikanodia05@gmail.com',
     'm_015': 'saanvikanodia05@gmail.com',
-    'm_016': 'anushkabatte.college@gmail.com',
-    'm_017': 'saanvikanodia05@gmail.com',
-    'm_018': 'nairsiddhanths@gmail.com',
-    'm_019': 'saanvikanodia05@gmail.com',
-    'm_020': 'anushkabatte.college@gmail.com',
+    'm_016': 'anushkabatte.college@gmail.com'
 }
 
 def get_merchant_emails(merchant_ids: List[str]) -> List[str]:
@@ -105,7 +101,6 @@ def send_email(
     Returns:
         Dictionary with success status and details
     """
-    # Get credentials from environment variables if not provided
     sender_email = sender_email or os.getenv('SUPPORT_EMAIL', 'support@example.com')
     sender_password = sender_password or os.getenv('SUPPORT_EMAIL_PASSWORD', '')
     
