@@ -96,14 +96,13 @@ Support Tickets → ML Classification → Incident Clustering → Multi-Agent An
 
 ## Technical Stack
 
-- **Python 3.11** - Core runtime
+- **Python 3.11** 
 - **scikit-learn** - Machine learning pipeline
 - **sentence-transformers** - Semantic embeddings
 - **LangChain/LangGraph** - Multi-agent orchestration
 - **Streamlit** - Interactive dashboard
 - **Groq API** - LLM inference
 - **SMTP/Gmail** - Email delivery system
-- **python-dotenv** - Environment configuration
 
 ## Installation
 
