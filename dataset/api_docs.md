@@ -659,3 +659,200 @@ If you see sustained 500 errors across multiple requests, check the Status Page.
 ---
 
 **NexusCommerce Developer Support** - copyright 2023
+
+
+---
+
+## 4. Production Checklist & Troubleshooting
+
+This section covers the most common blockers merchants hit when moving from “it works on my machine” to live traffic.  
+Keep it open in a tab while you deploy.
+
+---
+
+### 4.1 Webhook Reliability
+
+Webhooks are retried **three times** (exponential back-off: 1 s → 5 s → 30 s).  
+After the final failure the attempt is permanently logged and the endpoint is **paused** for 15 min.
+
+#### 4.1.1 Where to find the logs
+Dashboard → **Settings → Developers → Webhooks → ⋮ (menu) → Delivery Logs**  
+Filter by event type or date.  
+A red ❌ row means “final failure”; click it to see the exact response body we received from your endpoint.
+
+#### 4.1.2 Top 5 failure patterns we see in production
+| Log Message | Meaning | Fix |
+|-------------|---------|-----|
+| `ssl certificate verify failed` | Your TLS cert is self-signed or expired | Install a valid cert or use a tunnel (ngrok) for staging |
+| `407 Proxy Authentication Required` | Corporate proxy swallowed the request | Whitelist our IPs (`52.3.102.0/24`) or use a forward proxy that preserves headers |
+| `Request timeout after 10 s` | Your handler took > 10 s | Return `202 Accepted` immediately and process asynchronously |
+| `Cannot parse JSON` | You echoed HTML (error page) instead of JSON | Ensure your error handler returns `{"error": "…"}` with `Content-Type: application/json` |
+| `Signature mismatch` | HMAC header `X-Nexus-Signature` failed verification | Recompute with SHA-256 and your **signing secret** (not the API token!) |
+
+Quick test (Bash):
+```bash
+# Replace with your endpoint
+curl -X POST https://your-ngrok-url/webhooks/orders \
+  -H "Content-Type: application/json" \
+  -H "X-Nexus-Signature: sha256=YOUR_HASH" \
+  -d '{"event":"order.paid","id":"123"}'
+```
+If you get back `200` or `202` and the dashboard shows ✅, you’re good.
+
+---
+
+### 4.2 Rate-Limiting & Throttling
+
+| Plan | Requests / minute | Burst | Headers you can use |
+|------|-------------------|--------|----------------------|
+| Sandbox | 120 | 20 | — |
+| Starter | 600 | 60 | — |
+| Growth | 3 000 | 300 | — |
+| Enterprise | Custom | Custom | We expose headers |
+
+Every response includes:
+```
+X-RateLimit-Limit: 600
+X-RateLimit-Remaining: 42
+X-RateLimit-Reset: 1703121600
+Retry-After: 37   # only when 429 is returned
+```
+
+**Best-practice code (JavaScript/Axios):**
+```javascript
+axios.interceptors.response.use(
+  res => res,
+  async err => {
+    if (err.response?.status === 429) {
+      const retryAfter = err.response.headers['retry-after'] * 1000;
+      await new Promise(r => setTimeout(r, retryAfter));
+      return axios(err.config);          // retry once
+    }
+    throw err;
+  }
+);
+```
+Enterprise customers may request **priority queue** headers; contact support.
+
+---
+
+### 4.3 Finding / Rotating API Keys (Video Walk-through)
+
+The UI moved in v2.1—old PDFs still reference the old path.  
+Follow these steps or watch the 45-second GIF linked below.
+
+1. Login → **Merchant Dashboard**  
+2. Left sidebar: **Settings → Developers → API Tokens**  
+   (If you do **not** see “Developers” you are a *Staff* user; ask the store owner to grant you **Developer** role.)  
+3. Click **Create New Token** → give it a name and **minimal** scopes (e.g., `products:read`, `orders:write`).  
+4. Copy the token—**it is shown once**.  
+5. Store it in your vault (AWS Secrets Manager, Azure KeyVault, etc.).  
+5. To rotate: create the new token → update your secrets backend → **delete the old token** (we do not auto-expire).
+
+GIF: https://docs.nexuscommerce.com/assets/retrieve-api-key.gif  
+CLI lovers:  
+```bash
+curl -X POST https://api.nexuscommerce.com/v2/oauth/tokens \
+  -H "Authorization: Bearer $REFRESH_TOKEN" \
+  -d '{"scope":"products:read orders:write"}'
+```
+
+---
+
+### 4.4 Migration from V1 → V2 (Checklist & Rollback)
+
+**Before you start**
+- [ ] Read the **breaking-changes sheet** (link below).  
+- [ ] Create a **V2 staging token** (see §4.3).  
+- [ ] Snapshot your V1 product & order IDs (export CSV).  
+
+**Migration steps**
+1. Update SDK version  
+   `npm i @nexuscommerce/sdk@^2.0`  
+2. Replace base path  
+   `https://api.nexuscommerce.com/v1` → `/v2`  
+3. Rename fields (automated by our codemod)  
+   `product.handle` → `product.slug`  
+   `variant.sku` → `variant.skuCode`  
+4. Switch image URLs (see §4.5)  
+5. Deploy behind a **feature flag** so you can rollback instantly.
+
+**Rollback (if something explodes)**
+1. Revert your feature flag → traffic goes back to V1.  
+2. V1 remains reachable until **31 Dec 2024** (sunset date).  
+3. Open a **sev-1 ticket**; we will keep V1 warm for an extra 48 h while you debug.
+
+Sheet: https://docs.nexuscommerce.com/v2-migration/breaking-changes.pdf  
+Codemod: `npx @nexuscommerce/codemod migrate ./src`
+
+---
+
+### 4.5 Image URL Validation Rules
+
+Rejected URLs are **synchronous 400 errors**—no product is created.
+
+**Acceptable**
+- Publicly reachable over **HTTPS** (port 443)  
+- Content-Type: `image/jpeg`, `image/png`, `image/webp`  
+- Max size 10 MB  
+- Must return **200** within 4 s (our downloader timeout)  
+- Domains that send `Content-Length` header (no chunked encoding)  
+
+**Commonly rejected patterns**
+| URL | Reason |
+|-----|--------|
+| `http://localhost:3000/shoe.jpg` | Non-public host |
+| `https://drive.google.com/uc?export=download&id=…` | Google Drive does not send `Content-Length` |
+| `https://mysite.com/image.php?id=123` | Returns `text/html` instead of image |
+| `https://cdn.shopify.com/s/files/…` | Shopify protects images with `X-Content-Type-Options: nosniff` and hot-link denial |
+
+**CDN Recommendations**  
+Use one of the following to guarantee acceptance:
+- Amazon S3 + CloudFront (set `Cache-Control: public, max-age=31536000`)  
+- Cloudflare R2  
+- NexusCommerce CDN (contact support to enable)
+
+**Test before you save:**
+```bash
+curl -I -X GET https://yourcdn.com/image.jpg
+# Expect:
+# HTTP/2 200
+# content-type: image/jpeg
+# content-length: 456789
+```
+If any header is missing, fix it **before** sending the `POST /products` call.
+
+---
+
+### 4.6 CORS Error Matrix (Browser vs. Server)
+
+When you call the API from **browser JavaScript** you must satisfy **two** conditions:
+1. Domain on the whitelist (see §2).  
+2. The **same** protocol & port you whitelisted (`https://localhost:3000` ≠ `http://localhost:3000`).
+
+| Who sees the error? | Typical Console Message | Root Cause | Fix |
+|---------------------|-------------------------|------------|-----|
+| Browser | `Access-Control-Allow-Origin missing` | Domain not whitelisted | Add exact origin |
+| Browser | `CORS header ‘Access-Control-Allow-Credentials’ missing` | You sent `credentials: "include"` but we require `Authorization` header instead | Remove `credentials` and keep `Authorization: Bearer …` |
+| Server-side (Node, PHP) | `403 Forbidden` | Not a CORS issue—token or scopes wrong | Check token |
+| Browser | `Preflight invalid: 405 Method Not Allowed` | You triggered preflight (custom headers) but our OPTIONS route is disabled for your origin | Ensure you whitelist **scheme + host + port** exactly |
+
+**Local development snippet (React/Vite):**
+```javascript
+// vite.config.js
+export default defineConfig({
+  server: {
+    cors: {
+      origin: ["https://localhost:3000"],
+      credentials: true
+    }
+  }
+})
+```
+Whitelist: `https://localhost:3000` (note **https**).  
+If you use the default `http://localhost:3000`, change the whitelist entry accordingly.
+
+---
+
+Still stuck?  
+Open a ticket with **HAR file** (Chrome → Network → Export HAR) and we will pinpoint the failing preflight in <30 min.
