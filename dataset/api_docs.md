@@ -659,3 +659,173 @@ If you see sustained 500 errors across multiple requests, check the Status Page.
 ---
 
 **NexusCommerce Developer Support** - copyright 2023
+
+
+---
+
+## 4. Webhooks, Limits & Migration Reference
+
+### 4.1 Webhook Monitoring & Retry Guide
+
+Webhooks are fired from the following events:
+
+| Event | Payload | Retry Policy |
+|-------|---------|---------------|
+| `order.created` | `{orderId, status, total}` | 3 × exponential back-off (1 s → 2 s → 4 s) |
+| `order.updated` | `{orderId, oldStatus, newStatus}` | same |
+| `product.inventory_changed` | `{sku, delta, newStock}` | same |
+
+#### Required: idempotency key
+Every webhook body contains `idempotencyKey`. Store it for 24 h and return `200` for duplicates; otherwise you will process the same event twice.
+
+#### Signature verification (recommended)
+```http
+X-Nexus-Signature: sha256=<hex digest>
+```
+Verify with your webhook secret (Settings → Developers → Webhooks → “Show secret”).
+
+#### Node.js example
+```js
+const crypto = require('crypto');
+function isValid(body, signature, secret) {
+  const hmac = crypto.createHmac('sha256', secret)
+                    .update(body, 'utf8')
+                    .digest('hex');
+  return crypto.timingSafeEqual(
+    Buffer.from(`sha256=${hmac}`),
+    Buffer.from(signature)
+  );
+}
+```
+
+#### Common failure reasons
+| Log message | Meaning | Fix |
+|-------------|---------|-----|
+| `SSLHandshakeException` | TLS < 1.2 | Update server TLS |
+| `429 Too Many Requests` | Your endpoint throttled us | Increase limit or whitelist our IPs |
+| `Response body > 4 KB` | We reject huge responses | Return only `{"ok":true}` |
+| `DNS resolution failure` | Domain not public | Open firewall for `52.84.0.0/16` |
+
+#### Retry & escalation
+If we still receive `4xx/5xx` after 3 retries the webhook moves to “Failed” and triggers an email. You can:
+
+1. Replay failed hooks from the dashboard (Settings → Developers → Webhooks → “Failed” tab).
+2. Open a ticket and attach the `webhookId` from the email; include the `X-Nexus-Request-Id` header for faster triage.
+
+---
+
+### 4.2 Rate-Limit & Throttling Reference
+
+All endpoints share the same bucket:
+
+| Plan | Burst | Sustained |
+|------|-------|-----------|
+| Sandbox | 20 r/m | 100 r/h |
+| Starter | 60 r/m | 1 000 r/h |
+| Growth | 300 r/m | 10 000 r/h |
+| Enterprise | 1 000 r/m | 100 000 r/h |
+
+Headers returned on every call:
+```
+X-RateLimit-Limit: 300
+X-RateLimit-Remaining: 42
+X-RateLimit-Reset: 1719301200
+```
+
+When the limit is hit we return:
+```
+429 Too Many Requests
+Retry-After: 13
+```
+Where `Retry-After` is seconds until the bucket refills.
+
+#### Retry logic (Python)
+```python
+import time, requests
+def nexus_get(url, headers, max_retries=5):
+    for attempt in range(max_retries):
+        r = requests.get(url, headers=headers)
+        if r.status_code != 429:
+            return r
+        wait = int(r.headers.get('Retry-After', 2 ** attempt))
+        time.sleep(wait)
+    raise RuntimeError('Still throttled after retries')
+```
+
+#### Best-practice
+- Batch operations: `POST /products/batch` (≤ 100 items) counts as 1 call.
+- Use `include=summary` query param to shrink response size.
+- Cache product data for 300 s; stock webhooks will invalidate it.
+
+---
+
+### 4.3 Image Upload / URL Requirements
+
+You may send either:
+
+A. Public URL (`"images": ["https://…"]`)  
+B. Upload token (`"imageUploadTokens": ["up_123…"]`) obtained from `POST /upload/token`
+
+#### Rules for public URLs
+- HTTPS only (no plain HTTP).
+- Content-Length ≤ 10 MB.
+- Content-Type must be `image/jpeg`, `image/png`, `image/webp`.
+- Domain must **not** be `localhost`, `127.0.0.1`, or private CIDR.
+- Image must return `200` within 5 s. Redirects (3xx) are not followed.
+
+#### Validation errors
+| Error | Cause |
+|-------|-------|
+| `Image download timeout` | TTFB > 5 s |
+| `SSL certificate problem` | Self-signed / expired |
+| `Unsupported MIME` | Not one of the three types above |
+| `DNS name blacklisted` | Dropbox, Google Drive, etc. |
+
+#### Recommended CDNs
+- AWS CloudFront
+- Cloudflare
+- BunnyCDN  
+All of these satisfy the TLS and latency requirements.
+
+---
+
+### 4.4 Order History Migration FAQ
+
+**Q:** We imported 50 k historical orders but only 2 k appear via `GET /orders`.  
+**A:** By default the endpoint excludes orders with `source=import` and `createdAt < account.openedAt`. Add `?include=imported` to list them.
+
+**Q:** Imported orders return `lineItems: []`.  
+**A:** Line items are not migrated. Store them in your system and join on `orderId`.
+
+**Q:** Can we patch an imported order?  
+**A:** Only `status` and `trackingNumber`. Changing `total`, `tax`, or `lineItems` is blocked to preserve data integrity.
+
+**Q:** How do we back-date for reporting?  
+**A:** Provide `?createdAt[lte]=2023-12-01T00:00:00Z` but note that pagination is capped at 10 000 records. Iterate with `createdAt` ranges.
+
+---
+
+### 4.5 CORS Error Quick-Fix Table
+
+| Browser error | Likely cause | One-line fix |
+|---------------|------------|--------------|
+| `CORS header ‘Access-Control-Allow-Origin’ missing` | Domain not whitelisted | Add exact origin (with port) to Settings → Security → CORS Origins |
+| `CORS method PUT is not allowed` | Only GET/POST whitelisted | Select “Allow all methods” checkbox |
+| `CORS header ‘Access-Control-Allow-Credentials’ missing` | Cookie forwarding requested but not allowed | Toggle “Allow credentials” and ensure `withCredentials=false` if unused |
+| `CORS preflight did not succeed` | Firewall blocks OPTIONS | Allow HTTP verb OPTIONS on your WAF |
+
+---
+
+### 4.6 Platform Status & 500-error Escalation Path
+
+- Status page: https://status.nexuscommerce.com
+- Subscribe to webhook `platform.incident` for real-time alerts.
+
+When you receive `5xx` responses:
+
+1. Check status page first.
+2. If no incident, capture:
+   - `X-Nexus-Request-Id` header
+   - Timestamp (UTC)
+   - Full request + redacted headers
+3. Open ticket via dashboard (Support → Escalate) and attach above data. SLA: 1 business hour for Enterprise, 4 for Growth, next day for Starter.
