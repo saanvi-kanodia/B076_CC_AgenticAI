@@ -659,3 +659,220 @@ If you see sustained 500 errors across multiple requests, check the Status Page.
 ---
 
 **NexusCommerce Developer Support** - copyright 2023
+
+
+---
+
+## 4. Webhook Integration Guide
+
+Webhooks notify your server in real-time when events occur (order placed, payment captured, etc.).  
+The most common support tickets are “events never arrive” or “signature check fails.” Follow the checklist below to eliminate 90 % of problems.
+
+### 4.1 Quick Start Checklist
+1. Your endpoint must be **publicly reachable** (no `localhost`) and **HTTPS only** in Production.  
+2. Return `200 OK` within **5 s** or the delivery is marked as failed.  
+3. Echo the **raw body** (not parsed JSON) when verifying the signature.  
+4. Add the same endpoint to **both** Production and Staging dashboards if you use both environments.
+
+### 4.2 Retry Policy
+- NexusCommerce attempts **8** times with exponential backoff:  
+  `1 min → 2 min → 4 min → 8 min → 16 min → 32 min → 1 h → 2 h`  
+- After the final failure the event is **discarded** and must be fetched with the  
+  `GET /events/{id}/deliveries` endpoint.
+
+### 4.3 Signature Verification (Node.js example)
+
+```javascript
+const crypto = require('crypto');
+
+function isValidSignature(body, signature, secret) {
+  const hmac = crypto
+    .createHmac('sha256', secret)
+    .update(body, 'utf8')
+    .digest('hex');
+  return crypto.timingSafeEqual(
+    Buffer.from(`sha256=${hmac}`),
+    Buffer.from(signature)
+  );
+}
+
+// Express middleware
+app.post('/webhooks/nexus', (req, res) => {
+  const sig = req.get('X-NexusCommerce-Signature');
+  if (!isValidSignature(req.rawBody, sig, process.env.WEBHOOK_SECRET)) {
+    return res.status(401).send('Invalid signature');
+  }
+  // process event
+  res.status(200).json({ received: true });
+});
+```
+
+### 4.4 Troubleshooting Matrix
+
+| Symptom | Likely Cause | Fix |
+|---|---|---|
+| 404 in dashboard delivery log | Wrong path or typo | Check URL in Settings → Developers → Webhooks |
+| 401 in log | Signature mismatch | Ensure raw body is used; secret copied correctly |
+| `ERR_TLS_CERT_ALTNAME_INVALID` | Self-signed cert | Use a valid cert or add staging CA to trust store |
+| Events duplicated | Idempotency key missing | Store `event.id` and ignore duplicates |
+
+---
+
+## 5. Rate-Limiting & Throttling
+
+All endpoints share the same token bucket:
+
+| Plan | Quota | Burst |
+|---|---|---|
+| Sandbox | 60 req/min | 10 |
+| Production | 600 req/min | 100 |
+
+### 5.1 Response Headers
+Every response includes:
+
+```
+X-RateLimit-Limit: 600
+X-RateLimit-Remaining: 423
+X-RateLimit-Reset: 1703125200
+```
+
+### 5.2 429 Too Many Requests
+Body example:
+
+```json
+{
+  "error": "RATE_LIMIT_EXCEEDED",
+  "message": "Quota exceeded. Retry after 15 seconds.",
+  "retry_after": 15
+}
+```
+
+**Best practice:** Pause until `retry_after` or use exponential backoff with jitter.
+
+### 5.3 Code Sample (Python with tenacity)
+
+```python
+from tenacity import retry, stop_after_attempt, wait_exponential_jitter
+import httpx
+
+@retry(stop=stop_after_attempt(5),
+       wait=wait_exponential_jitter(initial=1, max=20))
+def call_api(method, url, **kwargs):
+    resp = httpx.request(method, url, **kwargs)
+    if resp.status_code == 429:
+        raise Exception("Rate limited")
+    resp.raise_for_status()
+    return resp
+```
+
+---
+
+## 6. Locating Your API Keys (Visual Walk-through)
+
+1. Login to [dashboard.nexuscommerce.com](https://dashboard.nexuscommerce.com)  
+2. In the left sidebar click **Settings** (gear icon)  
+3. Click **Developers** (sub-menu expands)  
+4. Click **API Tokens**  
+5. Click the **+ Create New Token** button (top-right)  
+6. Copy the key **immediately**—it is never shown again.
+
+Screenshot:  
+![Settings → Developers → API Tokens](https://cdn.nexuscommerce.com/docs/api-tokens-path.png)
+
+---
+
+## 7. Migration Guide (V1 → V2)
+
+### 7.1 Pre-flight Checklist
+- [ ] Upgrade SDK to ≥ 2.4.0  
+- [ ] Replace `api.nexuscommerce.com/v1` with `api.nexuscommerce.com/v2`  
+- [ ] Add `Accept-Version: 2.4.0` header  
+- [ ] Review **breaking changes** below:
+
+| V1 | V2 |
+|---|---|
+| `product.tax_included` boolean | `pricing.tax_behavior`: `"inclusive" | "exclusive"` |
+| `order.status = "shipped"` | `order.fulfillment_status = "fulfilled"` |
+| `GET /orders/{id}/items` | `GET /orders/{id}/line_items` |
+
+### 7.2 Rollback Plan
+If critical issues arise within 24 h:
+
+```bash
+# Revert environment variable
+NEXUS_API_VERSION=1
+# Roll back database migration
+npx nexus-migrate rollback --target 1.39.0
+# Purge CDN cache
+curl -X POST "https://api.nexuscommerce.com/v2/cache/purge" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Order history is retained for 30 days after rollback; no data loss occurs.
+
+---
+
+## 8. Image Upload Requirements
+
+### 8.1 Validation Rules
+- **Formats:** `jpg`, `jpeg`, `png`, `webp`  
+- **Max size:** 10 MB (5 MB for Safari < 14)  
+- **Min dimensions:** 250 × 250 px  
+- **Max dimensions:** 4096 × 4096 px  
+- **Color space:** sRGB only (CMYK rejected)  
+
+### 8.2 Signed-URL Workflow (recommended)
+
+1. Request upload URL:
+
+```http
+POST /media/uploads
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "filename": "shoes-front.webp",
+  "content_type": "image/webp"
+}
+```
+
+2. Response:
+
+```json
+{
+  "upload_url": "https://storage.nexuscommerce.com/upload/eyJ...",
+  "expires_at": "2023-12-20T18:00:00Z"
+}
+```
+
+3. Upload directly from browser:
+
+```javascript
+await fetch(upload_url, {
+  method: 'PUT',
+  headers: { 'Content-Type': 'image/webp' },
+  body: file
+});
+```
+
+4. Use returned `media_id` in product create call.
+
+### 8.3 CORS for Uploads
+Add `https://storage.nexuscommerce.com` to **Settings → Security → CORS Origins** or the PUT will be blocked.
+
+---
+
+## 9. CORS Troubleshooting Matrix
+
+| Error Message | Cause | Solution |
+|---|---|---|
+| `Access-Control-Allow-Origin header missing` | Domain not whitelisted | Add exact origin (include port) |
+| `CORS header ‘Access-Control-Allow-Credentials’ missing` | Credentials flag true but header absent | Ensure `withCredentials = false` unless using cookies |
+| `Preflight invalid: redirect` | HTTPS→HTTP redirect | Use HTTPS for local dev (`https://localhost:3000`) |
+| `Request header field x-custom-version not allowed` | Custom header not in `Access-Control-Allow-Headers` | Add `x-custom-version` to allowed headers in dashboard |
+
+Localhost quick setup:
+```bash
+npx local-ssl-proxy --source 3001 --target 3000 --cert localhost.pem --key localhost-key.pem
+```
+Then whitelist `https://localhost:3001`.
