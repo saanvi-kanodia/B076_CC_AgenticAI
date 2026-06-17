@@ -659,3 +659,231 @@ If you see sustained 500 errors across multiple requests, check the Status Page.
 ---
 
 **NexusCommerce Developer Support** - copyright 2023
+
+
+---
+
+## 3.6 Webhooks
+
+Webhooks notify your server in real-time when events occur (order placed, payment captured, etc.).  
+NexusCommerce guarantees **at-least-once** delivery and will retry failed deliveries for **24 h** using an exponential back-off schedule: 1 s → 2 s → 4 s → 8 s → … → 30 min intervals.
+
+### 1. Configuring a webhook endpoint
+
+1. Go to **Settings → Developers → Webhooks → Add endpoint**
+2. Enter your **HTTPS** URL (TLS 1.2+ required)
+3. Select the events you need (see list below)
+4. Copy the **signing secret** shown once; you will use it to verify the payload
+
+### 2. Retry & failure logs
+
+If your endpoint responds with anything other than **2xx**, the attempt is marked failed.  
+You can inspect the last 100 attempts in the dashboard:
+
+**Settings → Developers → Webhooks → [your-endpoint] → Delivery History**
+
+Each entry contains:
+
+- HTTP status returned by your server  
+- Response body (first 4 KB)  
+- Timestamp & next retry time  
+
+### 3. Signature verification (HMAC-SHA256)
+
+Every request contains the header `X-NexusCommerce-Signature`.  
+Quick Node.js example:
+
+```javascript
+const crypto = require('crypto');
+
+const SIGNING_SECRET = process.env.NEXUS_SIGNING_SECRET; // from dashboard
+
+function isValidSignature(payload, signature) {
+  const expected = crypto
+    .createHmac('sha256', SIGNING_SECRET)
+    .update(payload, 'utf8')
+    .digest('hex');
+  return crypto.timingSafeEqual(
+    Buffer.from(signature),
+    Buffer.from(`sha256=${expected}`)
+  );
+}
+
+// Express middleware
+app.post('/webhooks/nexus', express.raw({type: 'application/json'}), (req, res) => {
+  const sig = req.get('X-NexusCommerce-Signature');
+  if (!isValidSignature(req.body, sig)) {
+    return res.status(401).send('Invalid signature');
+  }
+  // process event
+  res.status(200).send('OK');
+});
+```
+
+### 4. Idempotency
+
+Each event contains `id` and `retryAttempt`. Store the `id` in your DB and ignore duplicates.
+
+---
+
+## 3.7 Rate Limiting
+
+| Plan       | Requests/min | Requests/hour |
+|------------|--------------|---------------|
+| Sandbox    | 60           | 1 000         |
+| Starter    | 120          | 5 000         |
+| Growth     | 600          | 20 000        |
+| Enterprise | 3 000        | 100 000       |
+
+Limits are per **API key** and **endpoint family** (`/products/*`, `/orders/*`, …).
+
+### Headers returned on every request
+
+```
+X-RateLimit-Limit: 120
+X-RateLimit-Remaining: 118
+X-RateLimit-Reset: 1703121600   # Unix timestamp
+```
+
+### 429 Too Many Requests
+
+Response body:
+
+```json
+{
+  "error": "RATE_LIMIT_EXCEEDED",
+  "message": "You have exceeded 120 requests/min. Retry after 30 s.",
+  "retryAfter": 30
+}
+```
+
+### Exponential back-off snippet (Python)
+
+```python
+import time, random, requests
+
+def nexus_get(url, headers, max_retries=5):
+    for attempt in range(max_retries):
+        r = requests.get(url, headers=headers)
+        if r.status_code != 429:
+            return r
+        retry_after = int(r.headers.get('retry-after', 2 ** attempt))
+        jitter = random.uniform(0, 1)
+        time.sleep(retry_after + jitter)
+    raise Exception("Still rate-limited after retries")
+```
+
+---
+
+## 2.3 Locating API Keys (with screenshots)
+
+1. Log in to the [Merchant Dashboard](https://dashboard.nexuscommerce.com)
+2. In the left sidebar click **Developers** (icon: `</>`)  
+   ![developers-tab](https://cdn.nexuscommerce.com/docs/assets/dev-tab.png)
+3. Type “API” in the search box if the section is collapsed
+4. Select **API Tokens → Create New Token**
+
+### Permission matrix
+
+| Permission Scope | Description                              | Required for                          |
+|------------------|------------------------------------------|---------------------------------------|
+| `read_products`  | List & retrieve products                 | Storefront catalog                    |
+| `write_products` | Create/update/delete products            | Admin dashboard                       |
+| `read_orders`  | Access order data                        | Order tracking                        |
+| `write_orders`  | Update order status, refunds             | Fulfillment service                   |
+| `read_webhooks` | List webhook endpoints                   | Health checks                         |
+| `write_webhooks`| Register/update endpoints                | CI/CD pipelines                       |
+
+Always apply the **least-privilege** principle. You can edit scopes later without rotating the key.
+
+---
+
+## 7. Migration Guide (v1 → v2)
+
+### Pre-flight checks
+
+- [ ] Ensure all client code sends `Accept-Version: 2.4.0`
+- [ ] Verify **CORS origins** (v2 enforces HTTPS-only)
+- [ ] Rotate API keys (v1 keys are **not** forward-compatible)
+- [ ] Review new **pagination** (`page[size]=50&page[number]=3`)—old `?limit=&offset=` is removed
+- [ ] Check webhook signatures (algorithm changed from SHA1 to SHA256)
+
+### Quick rollback (within 7 days)
+
+```bash
+# Revert last deploy and point back to v1
+export NEXUS_API_VERSION=1.9.0
+export NEXUS_BASE_URL=https://api.nexuscommerce.com/v1
+npm run deploy
+```
+
+Then disable v2 hooks in **Settings → Developers → Webhooks → Disable v2 Events**.
+
+### Data retention during rollback
+
+- Orders created in v2 **remain accessible** after rollback
+- Webhook events delivered **only once**—replay is not supported; store payloads if you need re-processing
+- Expected **read-only downtime window**: < 5 min (DNS propagation)
+
+---
+
+## 4.5 Media Upload (Image URLs)
+
+### Accepted image hosts
+
+- `https://cdn.nexuscommerce.com` (recommended)
+- `https://images.unsplash.com`
+- `https://cdn.shopify.com`
+- Your own **publicly accessible HTTPS** host with valid TLS 1.2+ certificate
+
+### Validation rules
+
+| Rule            | Limit                     |
+|-----------------|---------------------------|
+| File size       | ≤ 10 MB                   |
+| Dimensions      | ≥ 250 × 250 px, ≤ 4096 × 4096 px |
+| Formats         | JPEG, PNG, WebP           |
+| Aspect ratio    | Between 0.5 and 2.0       |
+
+### CORS for presigned URLs
+
+When uploading from a browser, request a **presigned POST URL**:
+
+```bash
+curl -X POST https://api.nexuscommerce.com/v2/media/upload-url \
+  -H "Authorization: Bearer <token>" \
+  -d '{"contentType":"image/jpeg","fileName":"hero.jpg"}'
+```
+
+Response:
+
+```json
+{
+  "uploadUrl": "https://cdn.nexuscommerce.com/upload/63f…",
+  "formData": {
+    "key": "user-uploads/63f…/hero.jpg",
+    "acl": "public-read",
+    "Content-Type": "image/jpeg",
+    "X-Amz-Signature": "abcd…"
+  }
+}
+```
+
+Use the returned `formData` in an HTML form or `fetch()` call. Ensure your domain is whitelisted under **Settings → Security → CORS Origins** or the browser will block the POST.
+
+---
+
+## 8. FAQ
+
+**Q: Why are my old orders not returned?**  
+A: v2 uses cursor-based pagination. If you still send `?limit=50&offset=250`, the parameters are ignored and **first page** is returned. Switch to `page[number]=2&page[size]=50`.
+
+**Q: CORS: “cross-origin blocked by CORS policy”**  
+A: Add the missing header `Access-Control-Allow-Headers: authorization,content-type` in your preflight response. Example for Netlify `_headers` file:
+
+```
+/*
+  Access-Control-Allow-Origin: https://www.mystore.com
+  Access-Control-Allow-Headers: authorization,content-type,x-version
+  Access-Control-Allow-Methods: GET, POST, PUT, DELETE
+```
