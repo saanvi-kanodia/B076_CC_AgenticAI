@@ -659,3 +659,239 @@ If you see sustained 500 errors across multiple requests, check the Status Page.
 ---
 
 **NexusCommerce Developer Support** - copyright 2023
+
+
+---
+
+## 3.6 Webhooks → Troubleshooting Failed Webhooks
+
+### Retry Logic
+NexusCommerce attempts to deliver each event **up to 8 times** with exponential backoff:
+- 1st retry: 3 s
+- 2nd retry: 15 s
+- 3rd retry: 1 min
+- 4th retry: 5 min
+- 5th retry: 30 min
+- 6th retry: 2 h
+- 7th retry: 8 h
+- 8th retry: 24 h  
+Retries stop as soon as your endpoint returns an HTTP 2xx.  
+**Configure the retry behaviour** in Settings → Developers → Webhooks → Advanced.
+
+### Payload Size Limits
+- Maximum JSON body: **512 KB**
+- Headers + body: **768 KB**
+Events exceeding the limit are truncated and marked `warning: payload_size_exceeded`.  
+Use the `GET /events/{id}/payload` endpoint to fetch the full payload when you receive this warning.
+
+### Signature Validation
+Every request includes the header `X-Nexus-Signature-SHA256`.  
+Verify the signature in your language of choice:
+
+```python
+import hmac, hashlib, os
+
+secret = os.getenv("WEBHOOK_SECRET")  # from Dashboard → Webhooks → Secret
+payload = request.body  # raw bytes
+signature = "sha256=" + hmac.new(
+    secret.encode(), payload, hashlib.sha256
+).hexdigest()
+
+if not hmac.compare_digest(signature, request.headers["X-Nexus-Signature-SHA256"]):
+    raise ValueError("Invalid signature")
+```
+
+### Common Failure Response Codes
+| HTTP Code | Meaning | Action |
+|-----------|---------|--------|
+| 410 Gone | Endpoint permanently removed | Delete webhook in dashboard |
+| 422 Unprocessable Entity | JSON schema mismatch | Check `event.type` and validate payload |
+| 429 Too Many Requests | You rate-limited us | Return `Retry-After` header (seconds) |
+| 5xx | Server error on your side | Fix issue; retries continue automatically |
+
+### Quick Diagnostic Checklist
+1. Is the webhook URL publicly reachable? (use `curl -I`)
+2. Does your firewall allow traffic from `52.3.102.0/24`?
+3. Did you whitelist the `User-Agent: NexusCommerce-Hookbot/2.4` header?
+4. Are you returning HTTP 200/201 within **10 s**? (Longer triggers timeout)
+5. Is the TLS certificate valid (not self-signed)?
+
+---
+
+## 3.7 Rate Limiting
+
+### Current Limits
+| Plan | Requests per Minute | Burst |
+|------|---------------------|-------|
+| Sandbox | 120 | 30 |
+| Starter | 300 | 60 |
+| Growth | 900 | 180 |
+| Enterprise | Contact support |
+
+Burst = number of requests allowed simultaneously before the average rate catches up.
+
+### Response Headers
+Every API response includes:
+```
+X-RateLimit-Limit: 300
+X-RateLimit-Remaining: 287
+X-RateLimit-Reset: 1703125200
+X-RateLimit-Reset-After: 42
+```
+
+### Handling a 429 Response
+```http
+HTTP/1.1 429 Too Many Requests
+Retry-After: 13
+Content-Type: application/json
+
+{
+  "error": "rate_limit_exceeded",
+  "message": "You have sent too many requests. Retry after 13 seconds."
+}
+```
+
+### Sample Back-off Implementation (JavaScript)
+```javascript
+const axios = require('axios');
+
+async function apiCall(url, data, retries = 3) {
+  try {
+    return await axios.post(url, data, { headers: {...} });
+  } catch (err) {
+    if (err.response?.status === 429 && retries > 0) {
+      const retryAfter = err.response.headers['retry-after'] * 1000;
+      await new Promise(r => setTimeout(r, retryAfter));
+      return apiCall(url, data, retries - 1);
+    }
+    throw err;
+  }
+}
+```
+
+---
+
+## 4.5 Order History
+
+### GET /orders/history
+Retrieve chronological order history for a customer or merchant.
+
+**Query Parameters**
+| Param | Type | Description |
+|-------|------|-------------|
+| customer_id | string | Filter by customer (UUID) |
+| status | csv | `completed,pending,cancelled` |
+| created_after | ISO-8601 | `2023-10-01T00:00:00Z` |
+| created_before | ISO-8601 | `2023-12-01T00:00:00Z` |
+| page | integer | Default 1 |
+| per_page | integer | 10-100, default 20 |
+
+**Example Request**
+```http
+GET /orders/history?customer_id=7d3fb-...&status=completed&per_page=50
+Authorization: Bearer <token>
+```
+
+**Example Response (200)**
+```json
+{
+  "data": [
+    {
+      "id": "ord_1009",
+      "customer_id": "7d3fb-...",
+      "status": "completed",
+      "total": 89.99,
+      "currency": "USD",
+      "created_at": "2023-11-28T14:23:45Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "per_page": 50,
+    "total": 247,
+    "has_next": true
+  }
+}
+```
+
+### Pagination
+Use `Link` header for convenience:
+```
+Link: <https://api.nexuscommerce.com/v2/orders/history?page=2>; rel="next"
+```
+
+---
+
+## 5.2 Image Upload Constraints
+
+### Accepted Formats
+| Type | Extensions |
+|------|------------|
+| JPEG | `.jpg`, `.jpeg` |
+| PNG | `.png` |
+| WebP | `.webp` |
+| AVIF | `.avif` |
+| GIF | `.gif` (first frame used) |
+
+### Size Limits
+- Single file: **5 MB**
+- Product gallery: **10 images** max
+- Width/Height: **4096 px** each side
+
+### Whitelisted CDN Hosts
+If you reference external URLs instead of uploading, the domain must be one of:
+- `images.unsplash.com`
+- `cdn.example.com`
+- `img.youtube.com`
+- Any domain verified in Settings → Files → Trusted CDN Domains
+
+### Rejected URL Example
+```http
+POST /products
+Content-Type: application/json
+
+{
+  "images": ["https://random-site.com/pic.jpg"]
+}
+
+HTTP/1.1 400 Bad Request
+{
+  "error": "invalid_image_url",
+  "message": "URL domain not whitelisted. Add 'random-site.com' under Settings → Files → Trusted CDN Domains."
+}
+```
+
+---
+
+## 6. Migration Guide (V1 → V2)
+
+### Pre-Migration Checklist
+- [ ] Back up your V1 OAuth tokens (they are incompatible; new Bearer tokens required)
+- [ ] Record current Webhook endpoints (V2 signatures differ)
+- [ ] Update your SDK to `nexuscommerce-js ^2.0`
+- [ ] Verify no hard-coded host `api.nexuscommerce.com/v1` in code
+- [ ] Notify stakeholders about 5-min read-only window
+
+### Migration Steps
+1. Create new V2 API tokens (Settings → Developers → API Tokens)
+2. Deploy code with V2 base URL (`/v2`)
+3. Run validation script (see below)
+4. Switch webhooks to V2 format (Dashboard → Webhooks → Upgrade)
+5. Delete V1 tokens after 48 h observation
+
+### Validation Script
+```bash
+curl -H "Authorization: Bearer $V2_TOKEN" \
+     -H "Accept-Version: 2.4.0" \
+     https://api.nexuscommerce.com/v2/health
+# Expected: {"status":"ok","version":"2.4.0"}
+```
+
+### Rollback Plan
+If critical issues arise within 24 h:
+1. Re-deploy previous tag using V1 base URL
+2. Re-create V1 tokens (Settings → Developers → Legacy Tokens)
+3. Revert webhooks to V1 (Dashboard → Webhooks → Rollback)
+4. Open a ticket with `priority:rollback` for engineering assistance
+
+Rollback is supported for **72 h** after migration; afterward V1 endpoints enter sunset phase.
